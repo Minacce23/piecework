@@ -18,7 +18,13 @@ size, drop in photos of your own fabrics, and it draws the quilt and works out t
 - **Fabric stash.** 43 starter fabrics are built in (solids in every colour, white polka dots,
   gingham) and you can upload photos of your own. Photos are shrunk on upload and tiled at a
   print size you set, so the scale looks true.
+- **Two ways to build a quilt.** Either pick a pattern block and let it draw, or switch to
+  **My block photos**: upload photos of squares you have already pieced and the quilt is built
+  from them. Randomize reshuffles the placement every time you press it, tries not to put the
+  same square next to itself, and can turn blocks at random quarter turns too.
 - **Cutting list.** Every cut size and piece count, yardage per fabric, binding and backing.
+  In block-photo mode it lists only the sashing, borders, binding and backing, since your
+  squares are already pieced.
   Tell it how many yards you have of something and it flags a shortfall. Prints cleanly.
 
 ## How your data is stored
@@ -32,6 +38,7 @@ button under **My Quilts**. Saved quilts and the stash are separate keys:
 | `pw.stash.v1` | Your fabrics |
 | `pw.projects.v1` | Saved quilts |
 | `pw.current.v1` | The quilt you have open |
+| `pw.blockphotos.v1` | Photos of your finished squares |
 | `pw.seeded.v1` | Marks that the starter fabrics were added once |
 
 ## Install it

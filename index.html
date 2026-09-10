@@ -223,6 +223,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <div class="tabs" id="tabs">
       <button data-t="design" class="on">Design</button>
       <button data-t="stash">Fabric Stash</button>
+      <button data-t="blocks">My Blocks</button>
       <button data-t="cut">Cutting List</button>
     </div>
     <div class="spacer"></div>
@@ -293,6 +294,13 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <!-- center: quilt -->
       <div class="stack">
         <div class="stage" id="stage"></div>
+        <div class="card" id="layoutCard" style="display:none">
+          <div class="hd"><h3>Block layout</h3><div class="spacer"></div>
+            <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="randRot" style="width:auto;margin:0"> Turn blocks randomly</label>
+            <button class="btn primary" id="btnRandom">Randomize</button></div>
+          <div class="bd"><div class="hint" id="layoutInfo"></div></div>
+        </div>
         <div class="statline" id="stats"></div>
         <div class="card">
           <div class="hd"><h3>Fabrics in this quilt</h3><div class="spacer"></div>
@@ -310,11 +318,21 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
             <button class="btn sm" id="btnBlocks">Change block</button>
           </div>
           <div class="bd">
+            <div class="seg" id="modeSeg" style="margin-bottom:12px">
+              <button data-m="pattern" class="on">Pattern block</button>
+              <button data-m="photos">My block photos</button>
+            </div>
+            <div id="patternMode">
             <div style="margin-bottom:8px"><b id="blockName">Nine Patch</b>
               <div class="hint" id="blockNote"></div></div>
             <div class="blockprev" id="blockPrev"></div>
             <p class="hint" style="margin:10px 0 0">Tap any patch in the block, or a row below, to choose the fabric for it.</p>
             <div class="slotlist" id="slots"></div>
+            </div>
+            <div id="photoMode" style="display:none">
+              <p class="hint" style="margin:0 0 10px">The quilt is being built from photos of your own finished squares. Upload them in the My Blocks tab, then press Randomize under the quilt.</p>
+              <button class="btn sm" style="width:100%" id="btnGoBlocks">Open my blocks</button>
+            </div>
           </div>
         </div>
         <div class="card">
@@ -350,9 +368,30 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       </div>
       <div class="card">
         <div class="hd"><h3>My Stash</h3><div class="spacer"></div><span class="hint" id="stashCount"></span>
+          <span class="hint" id="storeUse"></span>
           <button class="btn sm" id="btnStarters">Add starter fabrics</button>
           <button class="btn sm" id="btnNoStarters">Remove starters</button></div>
         <div class="bd"><div class="stashgrid" id="stashGrid"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MY BLOCKS ================= -->
+  <section class="pane" id="pane-blocks">
+    <div class="stack" style="max-width:1100px;margin:0 auto">
+      <div class="card">
+        <div class="hd"><h3>Add Block Photos</h3></div>
+        <div class="bd">
+          <div class="drop" id="dropB">
+            <b>Upload photos of your finished squares</b>
+            <div class="hint" style="margin-top:5px">Drop images here or click to browse. Lay each square flat, shoot straight down in even light, and crop close to the edges of the block. Square photos work best.</div>
+          </div>
+          <input type="file" id="fileB" accept="image/*" multiple hidden>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><h3>My Blocks</h3><div class="spacer"></div><span class="hint" id="blockCount"></span></div>
+        <div class="bd"><div class="stashgrid" id="blockGrid"></div></div>
       </div>
     </div>
   </section>
@@ -624,16 +663,18 @@ function sizeById(id){for(var i=0;i<SIZES.length;i++)if(SIZES[i].id===id)return 
 /* ============================================================
    3. STATE + STORAGE
    ============================================================ */
-var K={stash:'pw.stash.v1',projects:'pw.projects.v1',cur:'pw.current.v1',seeded:'pw.seeded.v1'};
-var stash=[],projects=[],state=null;
+var K={stash:'pw.stash.v1',projects:'pw.projects.v1',cur:'pw.current.v1',seeded:'pw.seeded.v1',photos:'pw.blockphotos.v1'};
+var stash=[],projects=[],photos=[],state=null;
 
 function newState(){
   return {id:'q'+Date.now(),name:'',size:'throw',cw:60,ch:80,block:'ninepatch',bsize:12,
-    cols:5,rows:7,sash:0,b1:2,b2:5,set:'straight',fabrics:{},saved:0};
+    cols:5,rows:7,sash:0,b1:2,b2:5,set:'straight',fabrics:{},
+    mode:'pattern',arrange:[],rots:[],randRot:false,saved:0};
 }
 function load(){
   try{stash=JSON.parse(localStorage.getItem(K.stash)||'[]');}catch(e){stash=[];}
   try{projects=JSON.parse(localStorage.getItem(K.projects)||'[]');}catch(e){projects=[];}
+  try{photos=JSON.parse(localStorage.getItem(K.photos)||'[]');}catch(e){photos=[];}
   var c=null;try{c=JSON.parse(localStorage.getItem(K.cur)||'null');}catch(e){}
   state=c||newState();
   if(!localStorage.getItem(K.seeded)){
@@ -654,6 +695,10 @@ function saveProject(){
   catch(e){toast('Could not save. Browser storage is full.');}
   saveCur();
 }
+function savePhotos(){try{localStorage.setItem(K.photos,JSON.stringify(photos));}catch(e){toast('Browser storage is full. Remove a few block photos.');}}
+function photoById(id){for(var i=0;i<photos.length;i++)if(photos[i].id===id)return photos[i];return null;}
+function usedMB(){var t=0;[K.stash,K.projects,K.cur,K.photos].forEach(function(k){var v=localStorage.getItem(k);if(v)t+=v.length;});return (t/1048576).toFixed(1);}
+function photoMode(){return state.mode==='photos';}
 function fabById(id){for(var i=0;i<stash.length;i++)if(stash[i].id===id)return stash[i];return null;}
 
 /* ============================================================
@@ -683,6 +728,54 @@ function swatchStyle(f){
   if(f.type==='solid')return 'background:'+f.color;
   if(f.tile)return 'background-image:url("'+f.img+'");background-size:25% 25%;background-repeat:repeat';
   return 'background-image:url('+f.img+')';
+}
+
+/* ============================================================
+   4b. BLOCK PHOTO ARRANGEMENT
+   ============================================================ */
+function shuffle(a){for(var i=a.length-1;i>0;i--){var k=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[k];a[k]=t;}return a;}
+function ensureArrangement(){
+  var L=layout(),need=L.cols*L.rows,lib=photos.map(function(p){return p.id;}),i;
+  if(!lib.length){state.arrange=[];state.rots=[];return;}
+  var ok=state.arrange&&state.arrange.length===need;
+  if(ok)for(i=0;i<need;i++)if(lib.indexOf(state.arrange[i])<0){ok=false;break;}
+  if(!ok){state.arrange=[];for(i=0;i<need;i++)state.arrange.push(lib[i%lib.length]);state.rots=null;}
+  if(!state.rots||state.rots.length!==need){state.rots=[];for(i=0;i<need;i++)state.rots.push(0);}
+}
+function randomizeLayout(){
+  var L=layout(),need=L.cols*L.rows,lib=photos.map(function(p){return p.id;}),i;
+  if(!lib.length){toast('Add some block photos first.');return;}
+  var pool=[];
+  while(pool.length<need)pool=pool.concat(shuffle(lib.slice()));
+  pool=shuffle(pool.slice(0,need));
+  if(lib.length>1){
+    for(var pass=0;pass<50;pass++){
+      var bad=[];
+      for(i=0;i<need;i++){
+        var r=Math.floor(i/L.cols),c=i%L.cols;
+        if(c>0&&pool[i]===pool[i-1])bad.push(i);
+        else if(r>0&&pool[i]===pool[i-L.cols])bad.push(i);
+      }
+      if(!bad.length)break;
+      for(var b=0;b<bad.length;b++){
+        var x=bad[b],y=Math.floor(Math.random()*need),t=pool[x];pool[x]=pool[y];pool[y]=t;
+      }
+    }
+  }
+  state.arrange=pool;
+  state.rots=[];
+  var turns=[0,90,180,270];
+  for(i=0;i<need;i++)state.rots.push(state.randRot?turns[Math.floor(Math.random()*4)]:0);
+  afterChange();
+}
+function layoutInfoText(){
+  var L=layout(),need=L.cols*L.rows,n=photos.length;
+  if(!n)return 'No block photos yet. Upload some in the My Blocks tab and they will fill the quilt.';
+  if(n>=need)return 'This quilt needs '+need+' squares and you have '+n+' photos, so '+(n-need)+
+    ' will sit out. Randomize picks a different set and a different order every time.';
+  var per=(need/n);
+  return 'This quilt needs '+need+' squares and you have '+n+' photos, so each one is used about '+
+    (per<1.5?'once':(Math.round(per)+' times'))+'. Randomize reshuffles them and tries not to put the same square next to itself.';
 }
 
 /* ============================================================
@@ -758,6 +851,29 @@ function drawQuilt(){
   var plainG=blockGroup(plain,L.B,defs,seen,false);
   body+='<defs><g id="blkMain">'+mainG+'</g><g id="blkPlain">'+plainG+'</g></defs>';
 
+  if(photoMode()){
+    ensureArrangement();
+    var seenPh={},r2,c2;
+    for(r2=0;r2<L.rows;r2++)for(c2=0;c2<L.cols;c2++){
+      var i2=r2*L.cols+c2, px=ox+c2*(L.B+L.sash), py=oy+r2*(L.B+L.sash);
+      var ph=photoById(state.arrange[i2]);
+      if(!ph){
+        body+='<rect x="'+px+'" y="'+py+'" width="'+L.B+'" height="'+L.B+'" fill="#EFE9DF" '+
+          'stroke="rgba(46,43,39,.2)" stroke-width="'+(L.B/220)+'"/>';
+        continue;
+      }
+      if(!seenPh[ph.id]){
+        seenPh[ph.id]=1;
+        defs.push('<g id="ph_'+ph.id+'"><image href="'+ph.img+'" x="0" y="0" width="'+L.B+
+          '" height="'+L.B+'" preserveAspectRatio="xMidYMid slice"/>'+
+          '<rect x="0" y="0" width="'+L.B+'" height="'+L.B+'" fill="none" stroke="rgba(46,43,39,.22)" stroke-width="'+(L.B/220)+'"/></g>');
+      }
+      var pr=(state.rots&&state.rots[i2])||0;
+      var ptr='translate('+px.toFixed(3)+' '+py.toFixed(3)+')';
+      if(pr)ptr+=' rotate('+pr+' '+(L.B/2)+' '+(L.B/2)+')';
+      body+='<use href="#ph_'+ph.id+'" transform="'+ptr+'"/>';
+    }
+  } else {
   for(var r=0;r<L.rows;r++)for(var c=0;c<L.cols;c++){
     var x=ox+c*(L.B+L.sash), y=oy+r*(L.B+L.sash);
     var usePlain=(state.set==='checker'&&((r+c)%2===1));
@@ -765,6 +881,7 @@ function drawQuilt(){
     var tr='translate('+x.toFixed(3)+' '+y.toFixed(3)+')';
     if(rot)tr+=' rotate('+rot+' '+(L.B/2)+' '+(L.B/2)+')';
     body+='<use href="#'+(usePlain?'blkPlain':'blkMain')+'" transform="'+tr+'"/>';
+  }
   }
   /* outline */
   body+='<rect x="0" y="0" width="'+L.W+'" height="'+L.H+'" fill="none" stroke="rgba(46,43,39,.35)" stroke-width="'+(L.W/400)+'"/>';
@@ -810,6 +927,14 @@ function slotRow(slot,hl){
 }
 function drawSlots(){
   var block=blockById(state.block),wrap=$('#slots');
+  var pm=photoMode();
+  $('#patternMode').style.display=pm?'none':'';
+  $('#photoMode').style.display=pm?'':'none';
+  $('#layoutCard').style.display=pm?'':'none';
+  $('#setting').closest('.card').style.display=pm?'none':'';
+  $('#layoutInfo').textContent=layoutInfoText();
+  $('#randRot').checked=!!state.randRot;
+  $$('#modeSeg button').forEach(function(b){b.classList.toggle('on',(b.dataset.m==='photos')===pm);});
   wrap.innerHTML='';
   block.slots.forEach(function(s){wrap.appendChild(slotRow(s));});
   var ex=$('#extraSlots');ex.innerHTML='';
@@ -818,7 +943,7 @@ function drawSlots(){
   $('#blockNote').textContent=block.note;
   /* fabric bar under the quilt */
   var bar=$('#fabbar');bar.innerHTML='';
-  block.slots.concat(extraSlots()).forEach(function(s){
+  (pm?extraSlots():block.slots.concat(extraSlots())).forEach(function(s){
     var f=fabById(state.fabrics[s]);
     var chip=el('button',{class:'chip',onclick:function(){openFabricPicker(s);}});
     chip.appendChild(el('div',{class:'sw',style:swatchStyle(f)}));
@@ -941,10 +1066,12 @@ function buildCutList(){
     if(!groups[key])groups[key]={slot:slot,w:spec.w,h:spec.h,per:spec.per,how:spec.how,note:note||'',qty:0};
     groups[key].qty+=qty;
   }
-  block.patches.forEach(function(p){
-    add(p.slot,cutSpec(p.cut,u),nBlocks,'for the block');
-  });
-  if(nPlain>0)add(BG,cutSpec({t:'rect',w:1,h:1},L.B),nPlain,'plain alternate block');
+  if(!photoMode()){
+    block.patches.forEach(function(p){
+      add(p.slot,cutSpec(p.cut,u),nBlocks,'for the block');
+    });
+    if(nPlain>0)add(BG,cutSpec({t:'rect',w:1,h:1},L.B),nPlain,'plain alternate block');
+  }
 
   /* long strips cut across the width of fabric */
   function wofStrips(slot,width,totalLen,note){
@@ -1004,7 +1131,7 @@ function drawCutList(){
   wrap.innerHTML='';
   var L=layout();
   wrap.appendChild(el('p',{class:'hint',style:'margin:0 0 14px',
-    text:($('#qname').value.trim()||'Untitled quilt')+' · '+blockById(state.block).name+' · '+
+    text:($('#qname').value.trim()||'Untitled quilt')+' · '+(photoMode()?'your own squares':blockById(state.block).name)+' · '+
       frac(L.B)+'in blocks · '+L.cols+' across by '+L.rows+' down · finished '+frac(L.W)+' x '+frac(L.H)+'in'}));
   data.forEach(function(sec){
     var f=fabById(state.fabrics[sec.slot]);
@@ -1029,6 +1156,8 @@ function drawCutList(){
     card.appendChild(t);
     wrap.appendChild(card);
   });
+  if(photoMode())wrap.insertBefore(el('p',{class:'hint',style:'margin:0 0 14px;color:var(--clay)',
+    text:'Your squares are already pieced, so only the fabric that joins and finishes them is listed here.'}),wrap.children[1]||null);
   var total=data.reduce(function(a,b){return a+b.yards;},0);
   wrap.appendChild(el('p',{class:'hint',text:'Total fabric across everything: about '+frac(up8(total))+' yards. Cutting sizes include 1/4in seam allowances and 15 percent extra.'}));
 }
@@ -1039,6 +1168,7 @@ function drawCutList(){
 function drawStash(){
   var g=$('#stashGrid');g.innerHTML='';
   $('#stashCount').textContent=stash.length+' fabric'+(stash.length===1?'':'s');
+  var su0=$('#storeUse');if(su0)su0.textContent='using '+usedMB()+' MB';
   if(!stash.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">Nothing here yet. Upload a few fabric photos above.</div>';return;}
   stash.forEach(function(f){
     var card=el('div',{class:'fab'});
@@ -1071,6 +1201,55 @@ function drawStash(){
     g.appendChild(card);
   });
 }
+function drawBlockPhotos(){
+  var g=$('#blockGrid');if(!g)return;
+  g.innerHTML='';
+  $('#blockCount').textContent=photos.length+' square'+(photos.length===1?'':'s');
+  var su=$('#storeUse');if(su)su.textContent='using '+usedMB()+' MB';
+  if(!photos.length){
+    g.innerHTML='<div class="empty" style="grid-column:1/-1">No squares yet. Upload photos of the blocks you have already pieced and the quilt will be built from them.</div>';
+    return;
+  }
+  photos.forEach(function(p){
+    var card=el('div',{class:'fab'});
+    card.appendChild(el('div',{class:'im',style:'background-image:url('+p.img+')'}));
+    var mt=el('div',{class:'mt'});
+    var nm=el('input',{type:'text',value:p.name,style:'border:0;background:transparent;padding:0;font-weight:600;font-size:12.5px'});
+    nm.onchange=function(){p.name=nm.value||'Square';savePhotos();};
+    mt.appendChild(nm);
+    card.appendChild(mt);
+    var acts=el('div',{class:'acts'});
+    acts.appendChild(el('div',{style:'flex:1'}));
+    acts.appendChild(el('button',{class:'btn sm',text:'Remove',onclick:function(){
+      if(!confirm('Remove "'+p.name+'" from your squares? This cannot be undone.'))return;
+      photos=photos.filter(function(x){return x.id!==p.id;});
+      state.arrange=[];state.rots=[];
+      savePhotos();afterChange();
+    }}));
+    card.appendChild(acts);
+    g.appendChild(card);
+  });
+}
+function addBlockPhoto(file){
+  var rd=new FileReader();
+  rd.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      var max=440,w=img.width,h=img.height,s=Math.min(1,max/Math.max(w,h));
+      var cv=document.createElement('canvas');cv.width=Math.round(w*s);cv.height=Math.round(h*s);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      photos.push({id:'b'+Date.now()+Math.floor(Math.random()*999),
+        name:file.name.replace(/\.[^.]+$/,'').slice(0,28)||'Square',
+        img:cv.toDataURL('image/jpeg',0.8)});
+      state.arrange=[];state.rots=[];
+      savePhotos();
+      if(!photoMode()){state.mode='photos';applyState();}
+      afterChange();
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(file);
+}
 function addImage(file){
   var rd=new FileReader();
   rd.onload=function(){
@@ -1089,7 +1268,7 @@ function addImage(file){
   rd.readAsDataURL(file);
 }
 function backup(){
-  var blob=new Blob([JSON.stringify({stash:stash,projects:projects,current:state},null,1)],{type:'application/json'});
+  var blob=new Blob([JSON.stringify({stash:stash,projects:projects,photos:photos,current:state},null,1)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='piecework-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
   toast('Backup downloaded');
@@ -1104,9 +1283,10 @@ function applyState(){
   $('#bsize').value=state.bsize;$('#cols').value=state.cols;$('#rows').value=state.rows;
   $('#sash').value=state.sash;$('#b1').value=state.b1;$('#b2').value=state.b2;$('#setting').value=state.set;
   $('#customWrap').style.display=state.size==='custom'?'grid':'none';
+  $('#randRot').checked=!!state.randRot;
 }
 function afterChange(){
-  drawBlockPreview();drawQuilt();drawSlots();drawStash();drawCutList();saveCur();
+  drawBlockPreview();drawQuilt();drawSlots();drawStash();drawBlockPhotos();drawCutList();saveCur();
 }
 function readForm(){
   state.size=$('#qsize').value;state.cw=+$('#cw').value;state.ch=+$('#ch').value;
@@ -1129,6 +1309,7 @@ function init(){
       $$('.pane').forEach(function(p){p.classList.remove('on');});
       $('#pane-'+b.dataset.t).classList.add('on');
       if(b.dataset.t==='cut')drawCutList();
+      if(b.dataset.t==='blocks')drawBlockPhotos();
       if(b.dataset.t==='design')drawQuilt();
     };
   });
@@ -1149,6 +1330,24 @@ function init(){
   $('#btnGoStash').onclick=function(){$$('#tabs button')[1].click();};
   $('#btnPrint').onclick=function(){window.print();};
   $('#btnStarters').onclick=addStarters;
+  $$('#modeSeg button').forEach(function(b){
+    b.onclick=function(){state.mode=b.dataset.m;if(photoMode())ensureArrangement();afterChange();};
+  });
+  $('#btnRandom').onclick=randomizeLayout;
+  $('#randRot').onchange=function(){
+    state.randRot=$('#randRot').checked;
+    if(state.randRot&&state.arrange&&state.arrange.length)randomizeLayout();
+    else{var i;state.rots=[];for(i=0;i<(state.arrange||[]).length;i++)state.rots.push(0);afterChange();}
+  };
+  $('#btnGoBlocks').onclick=function(){$$('#tabs button')[2].click();};
+  var dropB=$('#dropB'),fileB=$('#fileB');
+  dropB.onclick=function(){fileB.click();};
+  fileB.onchange=function(){Array.prototype.forEach.call(fileB.files,addBlockPhoto);fileB.value='';};
+  ['dragenter','dragover'].forEach(function(e){dropB.addEventListener(e,function(ev){ev.preventDefault();dropB.classList.add('over');});});
+  ['dragleave','drop'].forEach(function(e){dropB.addEventListener(e,function(ev){ev.preventDefault();dropB.classList.remove('over');});});
+  dropB.addEventListener('drop',function(ev){
+    Array.prototype.forEach.call(ev.dataTransfer.files,function(f){if(/^image\//.test(f.type))addBlockPhoto(f);});
+  });
   $('#btnNoStarters').onclick=removeStarters;
 
   var drop=$('#drop'),file=$('#file');
@@ -1173,8 +1372,8 @@ function init(){
       try{
         var d=JSON.parse(r.result);
         if(!confirm('Restore this backup? It will replace your current stash and saved quilts.'))return;
-        stash=d.stash||[];projects=d.projects||[];state=d.current||newState();
-        saveStash();localStorage.setItem(K.projects,JSON.stringify(projects));
+        stash=d.stash||[];projects=d.projects||[];photos=d.photos||[];state=d.current||newState();
+        saveStash();savePhotos();localStorage.setItem(K.projects,JSON.stringify(projects));
         applyState();afterChange();closeModal();toast('Backup restored');
       }catch(e){toast('That file could not be read.');}
     };
