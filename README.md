@@ -12,9 +12,15 @@ size, drop in photos of your own fabrics, and it draws the quilt and works out t
   Each one is drawn from geometry, not from an image, so it stays sharp at any size.
 - **Quilt sizes** from wall hanging through California king, plus custom. Choose a size and the
   number of blocks across and down fills in on its own.
-- **Sashing and borders**, with a live finished measurement.
+- **Sashing and borders**, with a live finished measurement. Sashing can run between the blocks
+  only or all the way around the outside edge, and can take **cornerstones**, a contrasting square
+  at every crossing. Both work with pattern blocks and with your own block photos.
 - **Five layout sets.** Straight, alternate, straight furrows, barn raising, and checkerboard
   with a plain alternate block. Turning blocks changes the secondary pattern without changing a seam.
+- **Scrappy fabrics.** A slot can hold more than one fabric. Tap several in the picker and every
+  block draws a different one from the set, balanced so each gets used about equally. "Shuffle
+  fabrics" redeals them. The cutting list then breaks down per fabric, which is how you actually
+  buy and cut for a scrap quilt.
 - **Fabric stash.** 43 starter fabrics are built in (solids in every colour, white polka dots,
   gingham) and you can upload photos of your own. Photos are shrunk on upload and tiled at a
   print size you set, so the scale looks true.
@@ -27,6 +33,14 @@ size, drop in photos of your own fabrics, and it draws the quilt and works out t
   squares are already pieced.
   Tell it how many yards you have of something and it flags a shortfall. Prints cleanly.
 
+- **Squares made.** A counter under the quilt tracks how many blocks you have finished and how
+  many are left, with a progress bar. Tap a square on the quilt map to mark it done, or use the
+  Finished one button. Squares still to make are veiled with a dashed outline so the quilt fills
+  in with colour as you sew. Progress is saved with the quilt and shows on its gallery card.
+- **Saved quilts.** Name a quilt and press Save. "My Quilts" is a gallery of little pictures of
+  every design you have saved, with Open, Rename, Duplicate and Delete on each. The header tells
+  you whether the quilt in front of you has unsaved changes.
+
 ## How your data is stored
 
 Everything lives in your own browser's local storage. No account, no server, nothing uploaded.
@@ -37,7 +51,7 @@ button under **My Quilts**. Saved quilts and the stash are separate keys:
 | --- | --- |
 | `pw.stash.v1` | Your fabrics |
 | `pw.projects.v1` | Saved quilts |
-| `pw.current.v1` | The quilt you have open |
+| `pw.current.v1` | The quilt you have open, its scrappy fabric deal and which squares are made |
 | `pw.blockphotos.v1` | Photos of your finished squares |
 | `pw.seeded.v1` | Marks that the starter fabrics were added once |
 

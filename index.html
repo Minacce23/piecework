@@ -91,6 +91,8 @@ select,input[type=number],input[type=text]{
 input[type=number]{-moz-appearance:textfield}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .hint{font-size:11.5px;color:var(--muted);line-height:1.4}
+.chk{display:flex;align-items:center;gap:7px;font-size:12.5px;margin:0 0 9px;cursor:pointer;line-height:1.3}
+.chk input{width:auto;margin:0;flex:0 0 auto}
 
 /* quilt stage */
 .stage{
@@ -104,6 +106,14 @@ input[type=number]{-moz-appearance:textfield}
 .stage svg{max-width:100%;height:auto;filter:drop-shadow(0 8px 22px rgba(46,43,39,.14))}
 .statline{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
 .fabbar{display:flex;flex-wrap:wrap;gap:8px}
+.progrow{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:11px}
+.prognum{display:flex;align-items:baseline;gap:6px}
+.prognum b{font-size:27px;font-weight:600;line-height:1}
+.prognum span{font-size:12px;color:var(--muted)}
+.bar{height:9px;border-radius:6px;background:#EFE9DF;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--sage);border-radius:6px;transition:width .25s}
+.cellhit{cursor:pointer}
+.cellhit:hover{fill:rgba(124,139,111,.22)}
 .chip{display:flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--paper);
   border-radius:10px;padding:6px 10px;cursor:pointer;text-align:left}
 .chip:hover{border-color:var(--sage);background:#F4F6F1}
@@ -163,6 +173,15 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .sheet .hd{position:sticky;top:0;background:var(--card);padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;z-index:2}
 .sheet .bd{padding:18px}
 .pickgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:14px}
+.qcard{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.qcard.on{border-color:var(--sage);box-shadow:0 0 0 2px rgba(124,139,111,.18)}
+.qcard .th{background:#F4F0E8;padding:12px;display:flex;align-items:center;justify-content:center;min-height:156px}
+.qcard .th svg{max-width:100%;max-height:150px;height:auto;filter:drop-shadow(0 3px 8px rgba(46,43,39,.14))}
+.qcard .mt{padding:9px 11px;border-top:1px solid var(--line)}
+.qcard .mt b{display:block;font-size:13px;line-height:1.25}
+.qcard .mt small{color:var(--muted);font-size:11px}
+.qcard .acts{display:flex;gap:6px;padding:9px 11px 11px;flex-wrap:wrap}
 .pick{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:8px;text-align:center}
 .pick:hover{border-color:var(--sage);background:#F6F8F4}
 .pick.on{border-color:var(--clay);box-shadow:0 0 0 2px rgba(180,112,90,.15)}
@@ -227,7 +246,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <button data-t="cut">Cutting List</button>
     </div>
     <div class="spacer"></div>
-    <input class="qname" id="qname" placeholder="Untitled quilt">
+    <input class="qname" id="qname" placeholder="Name this quilt">
+    <span class="hint" id="saveState"></span>
     <button class="btn" id="btnProjects">My Quilts</button>
     <button class="btn primary" id="btnSave">Save</button>
   </div>
@@ -249,11 +269,12 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
               <label class="f"><span>Length (in)</span><input type="number" id="ch" value="80" min="12" step="1"></label>
             </div>
             <label class="f"><span>Finished block size (in)</span>
-              <select id="bsize">
-                <option>4</option><option>6</option><option>8</option>
-                <option selected>12</option><option>14</option><option>16</option><option>18</option>
-              </select>
+              <input type="number" id="bsize" value="12" min="2" max="40" step="0.25" list="bsizes">
+              <datalist id="bsizes"><option>4</option><option>6</option><option>8</option><option>9</option>
+                <option>10</option><option>12</option><option>13</option><option>14</option>
+                <option>15</option><option>16</option><option>18</option></datalist>
             </label>
+            <p class="hint" style="margin:-6px 0 11px">Any size, including odd ones like 13. Finished size, so cut 1/2in bigger.</p>
             <div class="row2">
               <label class="f"><span>Blocks across</span><input type="number" id="cols" min="1" max="30" value="5"></label>
               <label class="f"><span>Blocks down</span><input type="number" id="rows" min="1" max="30" value="7"></label>
@@ -266,6 +287,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
           <div class="hd"><h3>Sashing &amp; Borders</h3></div>
           <div class="bd">
             <label class="f"><span>Sashing between blocks (in)</span><input type="number" id="sash" value="0" min="0" max="6" step="0.5"></label>
+            <div id="sashOpts" style="display:none;margin:-4px 0 12px">
+              <label class="chk"><input type="checkbox" id="sashEdge"> Sashing around the outside edge too</label>
+              <label class="chk"><input type="checkbox" id="corner"> Cornerstones where the sashing crosses</label>
+            </div>
             <div class="row2">
               <label class="f"><span>Inner border (in)</span><input type="number" id="b1" value="2" min="0" max="12" step="0.5"></label>
               <label class="f"><span>Outer border (in)</span><input type="number" id="b2" value="5" min="0" max="16" step="0.5"></label>
@@ -294,6 +319,22 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <!-- center: quilt -->
       <div class="stack">
         <div class="stage" id="stage"></div>
+        <div class="card" id="progCard">
+          <div class="hd"><h3>Squares made</h3><div class="spacer"></div>
+            <label class="chk" style="margin:0"><input type="checkbox" id="showProg" checked> Shade the ones still to make</label>
+          </div>
+          <div class="bd">
+            <div class="progrow">
+              <button class="btn" id="progMinus">Undo one</button>
+              <div class="prognum"><b id="progDone">0</b><span>of <i id="progTotal">0</i> made</span></div>
+              <button class="btn primary" id="progPlus">Finished one</button>
+              <div style="flex:1"></div>
+              <button class="btn sm" id="progReset">Start over</button>
+            </div>
+            <div class="bar"><i id="progBar"></i></div>
+            <p class="hint" id="progHint" style="margin:9px 0 0"></p>
+          </div>
+        </div>
         <div class="card" id="layoutCard" style="display:none">
           <div class="hd"><h3>Block layout</h3><div class="spacer"></div>
             <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -304,7 +345,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
         <div class="statline" id="stats"></div>
         <div class="card">
           <div class="hd"><h3>Fabrics in this quilt</h3><div class="spacer"></div>
-            <span class="hint">Tap any one to change it</span></div>
+            <span class="hint">Tap any one to change it</span>
+            <button class="btn sm" id="btnShuffleFab" style="display:none">Shuffle fabrics</button></div>
           <div class="bd"><div class="fabbar" id="fabbar"></div></div>
         </div>
       </div>
@@ -668,8 +710,9 @@ var stash=[],projects=[],photos=[],state=null;
 
 function newState(){
   return {id:'q'+Date.now(),name:'',size:'throw',cw:60,ch:80,block:'ninepatch',bsize:12,
-    cols:5,rows:7,sash:0,b1:2,b2:5,set:'straight',fabrics:{},
-    mode:'pattern',arrange:[],rots:[],randRot:false,saved:0};
+    cols:5,rows:7,sash:0,sashEdge:false,corner:false,b1:2,b2:5,set:'straight',fabrics:{},
+    mode:'pattern',arrange:[],rots:[],randRot:false,scrap:{},
+    done:[],showProgress:true,saved:0};
 }
 function load(){
   try{stash=JSON.parse(localStorage.getItem(K.stash)||'[]');}catch(e){stash=[];}
@@ -677,6 +720,7 @@ function load(){
   try{photos=JSON.parse(localStorage.getItem(K.photos)||'[]');}catch(e){photos=[];}
   var c=null;try{c=JSON.parse(localStorage.getItem(K.cur)||'null');}catch(e){}
   state=c||newState();
+  migrate(state);projects.forEach(migrate);
   if(!localStorage.getItem(K.seeded)){
     var have={};stash.forEach(function(f){have[f.id]=1;});
     starterFabrics().forEach(function(f){if(!have[f.id])stash.push(f);});
@@ -684,16 +728,60 @@ function load(){
     saveStash();
   }
 }
+function migrate(st){
+  if(!st||!st.fabrics)return;
+  Object.keys(st.fabrics).forEach(function(k){
+    if(typeof st.fabrics[k]==='string')st.fabrics[k]=[st.fabrics[k]];
+  });
+  if(!st.scrap)st.scrap={};
+  if(!st.done)st.done=[];
+  if(st.showProgress===undefined)st.showProgress=true;
+}
 function saveStash(){try{localStorage.setItem(K.stash,JSON.stringify(stash));}catch(e){toast('Browser storage is full. Remove a few fabrics.');}}
 function saveCur(){try{localStorage.setItem(K.cur,JSON.stringify(state));}catch(e){}}
-function saveProject(){
-  state.name=$('#qname').value.trim()||'Untitled quilt';
+var dirty=false;
+function writeProjects(){
+  try{localStorage.setItem(K.projects,JSON.stringify(projects));return true;}
+  catch(e){toast('Could not save. Browser storage is full.');return false;}
+}
+function commitSave(name,asCopy){
+  state.name=name;
   state.saved=Date.now();
+  if(asCopy)state.id='q'+Date.now();
   var i=-1;projects.forEach(function(p,k){if(p.id===state.id)i=k;});
-  if(i>=0)projects[i]=JSON.parse(JSON.stringify(state)); else projects.unshift(JSON.parse(JSON.stringify(state)));
-  try{localStorage.setItem(K.projects,JSON.stringify(projects));toast('Saved "'+state.name+'"');}
-  catch(e){toast('Could not save. Browser storage is full.');}
-  saveCur();
+  var snap=JSON.parse(JSON.stringify(state));
+  if(i>=0)projects[i]=snap; else projects.unshift(snap);
+  if(writeProjects())toast('Saved "'+state.name+'"');
+  dirty=false;saveCur();applyState();afterChange();dirty=false;updateSaveState();
+}
+function saveProject(asCopy){
+  var current=$('#qname').value.trim();
+  if(current&&!asCopy){commitSave(current,false);return;}
+  openModal(asCopy?'Save a copy':'Name this quilt',function(b){
+    b.appendChild(el('p',{class:'hint',style:'margin:0 0 10px',
+      text:asCopy?'The copy is saved separately, so the original stays as it was.':'Give it a name you will recognise later, for example "Star Adventure throw" or "Mum birthday quilt".'}));
+    var inp=el('input',{type:'text',value:asCopy?(current+' copy'):current,placeholder:'Quilt name',style:'margin-bottom:12px'});
+    b.appendChild(inp);
+    var go=function(){
+      var v=inp.value.trim();
+      if(!v){inp.focus();toast('It needs a name.');return;}
+      closeModal();commitSave(v,!!asCopy);
+    };
+    inp.onkeydown=function(e){if(e.key==='Enter')go();};
+    var row=el('div',{style:'display:flex;gap:8px'});
+    row.appendChild(el('button',{class:'btn primary',text:asCopy?'Save the copy':'Save quilt',onclick:go}));
+    row.appendChild(el('button',{class:'btn',text:'Cancel',onclick:closeModal}));
+    b.appendChild(row);
+    setTimeout(function(){inp.focus();inp.select();},60);
+  });
+}
+function updateSaveState(){
+  var s=$('#saveState');if(!s)return;
+  if(dirty&&state.saved)s.textContent='unsaved changes';
+  else if(dirty)s.textContent='not saved yet';
+  else if(state.saved)s.textContent='saved '+new Date(state.saved).toLocaleDateString();
+  else s.textContent='';
+  s.style.color=dirty?'var(--clay)':'var(--muted)';
 }
 function savePhotos(){try{localStorage.setItem(K.photos,JSON.stringify(photos));}catch(e){toast('Browser storage is full. Remove a few block photos.');}}
 function photoById(id){for(var i=0;i<photos.length;i++)if(photos[i].id===id)return photos[i];return null;}
@@ -710,11 +798,24 @@ function slotFallback(block,slot){
   if(slot===BG)return '#F2ECE1';
   return PLACE[(i<0?0:i)%PLACE.length];
 }
-function fillFor(block,slot,defs,seen){
-  var f=fabById(state.fabrics[slot]);
+function fabList(slot){
+  var v=state.fabrics[slot];
+  if(!v)return [];
+  if(typeof v==='string')return fabById(v)?[v]:[];
+  return v.filter(function(id){return !!fabById(id);});
+}
+function isScrappy(slot){return fabList(slot).length>1;}
+function anyScrappy(block){
+  for(var i=0;i<block.slots.length;i++)if(isScrappy(block.slots[i]))return true;
+  return false;
+}
+var IDSEQ=0;
+function fillFor(block,slot,defs,seen,pick){
+  var id=(pick&&pick[slot])||fabList(slot)[0];
+  var f=fabById(id);
   if(!f)return slotFallback(block,slot);
   if(f.type==='solid')return f.color;
-  var pid='fab_'+f.id;
+  var pid='fab_'+f.id+(seen._uid||'');
   if(!seen[pid]){
     seen[pid]=1;
     var ts=f.scale||6;
@@ -723,6 +824,7 @@ function fillFor(block,slot,defs,seen){
   }
   return 'url(#'+pid+')';
 }
+function slotSwatch(slot){return swatchStyle(fabById(fabList(slot)[0]));}
 function swatchStyle(f){
   if(!f)return 'background:repeating-linear-gradient(45deg,#EFE9DF 0 5px,#E3DCD1 5px 10px)';
   if(f.type==='solid')return 'background:'+f.color;
@@ -779,19 +881,112 @@ function layoutInfoText(){
 }
 
 /* ============================================================
+   4c. SCRAPPY FABRICS - one slot, several fabrics, a different one per block
+   ============================================================ */
+function balancedPool(lib,need){
+  var pool=[];
+  while(pool.length<need)pool=pool.concat(shuffle(lib.slice()));
+  return shuffle(pool.slice(0,need));
+}
+function ensureScrap(block){
+  var L=layout(),need=L.cols*L.rows;
+  if(!state.scrap)state.scrap={};
+  block.slots.forEach(function(s){
+    var lib=fabList(s);
+    if(lib.length<2){delete state.scrap[s];return;}
+    var cur=state.scrap[s],ok=cur&&cur.length===need,i;
+    if(ok)for(i=0;i<need;i++)if(lib.indexOf(cur[i])<0){ok=false;break;}
+    if(!ok)state.scrap[s]=balancedPool(lib,need);
+  });
+  Object.keys(state.scrap).forEach(function(s){
+    if(block.slots.indexOf(s)<0||fabList(s).length<2)delete state.scrap[s];
+  });
+}
+function shuffleFabrics(){
+  var block=blockById(state.block),L=layout(),need=L.cols*L.rows,n=0;
+  if(!state.scrap)state.scrap={};
+  block.slots.forEach(function(s){
+    var lib=fabList(s);
+    if(lib.length<2)return;
+    state.scrap[s]=balancedPool(lib,need);n++;
+  });
+  if(!n){toast('Pick more than one fabric for a slot first.');return;}
+  afterChange();
+}
+function pickFor(block,idx){
+  var p={},i,s;
+  for(i=0;i<block.slots.length;i++){
+    s=block.slots[i];
+    if(state.scrap&&state.scrap[s])p[s]=state.scrap[s][idx];
+  }
+  return p;
+}
+
+/* ============================================================
+   4d. PROGRESS - which squares are finished
+   ============================================================ */
+function needBlocks(){var L=layout();return L.cols*L.rows;}
+function doneList(){
+  var n=needBlocks();
+  if(!state.done)state.done=[];
+  state.done=state.done.filter(function(i){return i>=0&&i<n;});
+  return state.done;
+}
+function isDone(i){return doneList().indexOf(i)>=0;}
+function toggleDone(i){
+  var d=doneList(),k=d.indexOf(i);
+  if(k>=0)d.splice(k,1); else d.push(i);
+  afterChange();
+}
+function bumpDone(dir){
+  var d=doneList(),n=needBlocks(),i;
+  if(dir>0){
+    for(i=0;i<n;i++)if(d.indexOf(i)<0){d.push(i);afterChange();return;}
+    toast('Every square is already marked as made.');
+  } else {
+    if(!d.length){toast('Nothing marked yet.');return;}
+    d.sort(function(a,b){return a-b;});d.pop();afterChange();
+  }
+}
+function shading(){return state.showProgress!==false&&doneList().length>0;}
+function drawProgress(){
+  var n=needBlocks(),d=doneList().length,left=n-d;
+  $('#progDone').textContent=d;
+  $('#progTotal').textContent=n;
+  $('#progBar').style.width=(n?Math.round(d/n*100):0)+'%';
+  $('#showProg').checked=state.showProgress!==false;
+  var t;
+  if(d===0)t='Tap a square on the quilt above as you finish it, or press Finished one.';
+  else if(left===0)t='All '+n+' squares are done. Time to sew the rows together.';
+  else t=left+' still to make. Tap any square on the quilt to mark it, or tap a shaded one to take it back.';
+  $('#progHint').textContent=t;
+}
+
+/* ============================================================
    5. GEOMETRY
    ============================================================ */
 function layout(){
-  var s=$('#qsize').value==='custom'?{w:+state.cw,h:+state.ch}:sizeById(state.size);
+  var s=state.size==='custom'?{w:+state.cw,h:+state.ch}:sizeById(state.size);
   var B=+state.bsize,sa=+state.sash,b1=+state.b1,b2=+state.b2;
   var cols=Math.max(1,Math.min(30,Math.round(state.cols))),rows=Math.max(1,Math.min(30,Math.round(state.rows)));
-  var cw=cols*B+(cols-1)*sa, chh=rows*B+(rows-1)*sa;
-  return {target:s,B:B,sash:sa,b1:b1,b2:b2,cols:cols,rows:rows,
+  var e=(sa>0&&state.sashEdge)?1:0;
+  var cw=cols*B+(cols-1)*sa+2*e*sa, chh=rows*B+(rows-1)*sa+2*e*sa;
+  return {target:s,B:B,sash:sa,edge:e,b1:b1,b2:b2,cols:cols,rows:rows,
     centerW:cw,centerH:chh,W:cw+2*(b1+b2),H:chh+2*(b1+b2)};
 }
+/* left edge of every vertical sashing strip, and top edge of every horizontal one */
+function sashLines(L,base,n,span){
+  var out=[],i;
+  if(L.sash<=0)return out;
+  if(L.edge)out.push(base);
+  for(i=1;i<n;i++)out.push(base+L.edge*L.sash+i*(L.B+L.sash)-L.sash);
+  if(L.edge)out.push(base+L.edge*L.sash+(n-1)*(L.B+L.sash)+L.B);
+  return out;
+}
 function fitBlocks(){
-  var s=$('#qsize').value==='custom'?{w:+state.cw,h:+state.ch}:sizeById(state.size);
-  var B=+state.bsize,sa=+state.sash,pad=2*((+state.b1)+(+state.b2));
+  var s=state.size==='custom'?{w:+state.cw,h:+state.ch}:sizeById(state.size);
+  var B=+state.bsize,sa=+state.sash;
+  var pad=2*((+state.b1)+(+state.b2))+2*((sa>0&&state.sashEdge)?sa:0);
   state.cols=Math.max(1,Math.round((s.w-pad+sa)/(B+sa)));
   state.rows=Math.max(1,Math.round((s.h-pad+sa)/(B+sa)));
   $('#cols').value=state.cols;$('#rows').value=state.rows;
@@ -816,25 +1011,27 @@ function pathOf(pts,u){
   for(var i=0;i<pts.length;i++)d+=(i?'L':'M')+(pts[i][0]*u).toFixed(3)+' '+(pts[i][1]*u).toFixed(3);
   return d+'Z';
 }
-function blockGroup(block,size,defs,seen,interactive){
+function blockGroup(block,size,defs,seen,interactive,pick){
   var u=size/block.grid,out='',sw=(size/200).toFixed(3);
   block.patches.forEach(function(p,i){
-    out+='<path class="patch" data-slot="'+p.slot+'" d="'+pathOf(p.pts,u)+'" fill="'+fillFor(block,p.slot,defs,seen)+
+    out+='<path class="patch" data-slot="'+p.slot+'" d="'+pathOf(p.pts,u)+'" fill="'+fillFor(block,p.slot,defs,seen,pick)+
       '" stroke="rgba(46,43,39,.18)" stroke-width="'+sw+'"'+(interactive?' style="cursor:pointer"':'')+'/>';
   });
   return out;
 }
 function drawBlockPreview(){
-  var block=blockById(state.block),defs=[],seen={},size=100;
+  var block=blockById(state.block),defs=[],seen={_uid:'_p'+(++IDSEQ)},size=100;
   var inner=blockGroup(block,size,defs,seen,true);
   $('#blockPrev').innerHTML='<svg viewBox="-1 -1 '+(size+2)+' '+(size+2)+'"><defs>'+defs.join('')+'</defs>'+inner+'</svg>';
   $$('#blockPrev .patch').forEach(function(p){
     p.onclick=function(){openFabricPicker(p.getAttribute('data-slot'));};
   });
 }
-function drawQuilt(){
+function buildQuilt(interactive){
   var L=layout(),block=blockById(state.block),plain=ALT;
-  var defs=[],seen={},body='';
+  var UID='_u'+(++IDSEQ);
+  var defs=[],seen={_uid:UID},body='';
+  var shade=shading();
   var bgFill=fillFor(block,BG,defs,seen);
   var bd1=fillFor({slots:[],grid:1},'Inner border',defs,seen);
   var bd2=fillFor({slots:[],grid:1},'Outer border',defs,seen);
@@ -843,13 +1040,22 @@ function drawQuilt(){
   /* borders */
   if(L.b2>0)body+='<rect x="0" y="0" width="'+L.W+'" height="'+L.H+'" fill="'+bd2+'"/>';
   if(L.b1>0)body+='<rect x="'+L.b2+'" y="'+L.b2+'" width="'+(L.W-2*L.b2)+'" height="'+(L.H-2*L.b2)+'" fill="'+bd1+'"/>';
-  var ox=L.b1+L.b2,oy=L.b1+L.b2;
+  var base=L.b1+L.b2;
   /* sashing field */
-  if(L.sash>0)body+='<rect x="'+ox+'" y="'+oy+'" width="'+L.centerW+'" height="'+L.centerH+'" fill="'+sashF+'"/>';
+  if(L.sash>0)body+='<rect x="'+base+'" y="'+base+'" width="'+L.centerW+'" height="'+L.centerH+'" fill="'+sashF+'"/>';
+  var ox=base+L.edge*L.sash, oy=base+L.edge*L.sash;
+  /* cornerstones */
+  if(L.sash>0&&state.corner){
+    var csF=fillFor({slots:[],grid:1},'Cornerstones',defs,seen);
+    var vx=sashLines(L,base,L.cols,L.B),hy=sashLines(L,base,L.rows,L.B),a,b2i;
+    for(a=0;a<vx.length;a++)for(b2i=0;b2i<hy.length;b2i++)
+      body+='<rect x="'+vx[a]+'" y="'+hy[b2i]+'" width="'+L.sash+'" height="'+L.sash+'" fill="'+csF+
+        '" stroke="rgba(46,43,39,.15)" stroke-width="'+(L.sash/40)+'"/>';
+  }
 
   var mainG=blockGroup(block,L.B,defs,seen,false);
   var plainG=blockGroup(plain,L.B,defs,seen,false);
-  body+='<defs><g id="blkMain">'+mainG+'</g><g id="blkPlain">'+plainG+'</g></defs>';
+  body+='<defs><g id="blkMain'+UID+'">'+mainG+'</g><g id="blkPlain'+UID+'">'+plainG+'</g></defs>';
 
   if(photoMode()){
     ensureArrangement();
@@ -864,14 +1070,26 @@ function drawQuilt(){
       }
       if(!seenPh[ph.id]){
         seenPh[ph.id]=1;
-        defs.push('<g id="ph_'+ph.id+'"><image href="'+ph.img+'" x="0" y="0" width="'+L.B+
+        defs.push('<g id="ph_'+ph.id+UID+'"><image href="'+ph.img+'" x="0" y="0" width="'+L.B+
           '" height="'+L.B+'" preserveAspectRatio="xMidYMid slice"/>'+
           '<rect x="0" y="0" width="'+L.B+'" height="'+L.B+'" fill="none" stroke="rgba(46,43,39,.22)" stroke-width="'+(L.B/220)+'"/></g>');
       }
       var pr=(state.rots&&state.rots[i2])||0;
       var ptr='translate('+px.toFixed(3)+' '+py.toFixed(3)+')';
       if(pr)ptr+=' rotate('+pr+' '+(L.B/2)+' '+(L.B/2)+')';
-      body+='<use href="#ph_'+ph.id+'" transform="'+ptr+'"/>';
+      body+='<use href="#ph_'+ph.id+UID+'" transform="'+ptr+'"/>';
+    }
+  } else if(anyScrappy(block)){
+    ensureScrap(block);
+    for(var sr=0;sr<L.rows;sr++)for(var sc=0;sc<L.cols;sc++){
+      var si=sr*L.cols+sc, sx=ox+sc*(L.B+L.sash), sy=oy+sr*(L.B+L.sash);
+      var sPlain=(state.set==='checker'&&((sr+sc)%2===1));
+      var srot=sPlain?0:rotFor(sr,sc,L);
+      var str='translate('+sx.toFixed(3)+' '+sy.toFixed(3)+')';
+      if(srot)str+=' rotate('+srot+' '+(L.B/2)+' '+(L.B/2)+')';
+      body+='<g transform="'+str+'">'+
+        (sPlain?blockGroup(plain,L.B,defs,seen,false):blockGroup(block,L.B,defs,seen,false,pickFor(block,si)))+
+        '</g>';
     }
   } else {
   for(var r=0;r<L.rows;r++)for(var c=0;c<L.cols;c++){
@@ -880,18 +1098,52 @@ function drawQuilt(){
     var rot=usePlain?0:rotFor(r,c,L);
     var tr='translate('+x.toFixed(3)+' '+y.toFixed(3)+')';
     if(rot)tr+=' rotate('+rot+' '+(L.B/2)+' '+(L.B/2)+')';
-    body+='<use href="#'+(usePlain?'blkPlain':'blkMain')+'" transform="'+tr+'"/>';
+    body+='<use href="#'+(usePlain?'blkPlain':'blkMain')+UID+'" transform="'+tr+'"/>';
   }
   }
   /* outline */
   body+='<rect x="0" y="0" width="'+L.W+'" height="'+L.H+'" fill="none" stroke="rgba(46,43,39,.35)" stroke-width="'+(L.W/400)+'"/>';
+  /* veil the squares still to make */
+  if(shade){
+    for(var vr=0;vr<L.rows;vr++)for(var vc=0;vc<L.cols;vc++){
+      var vi=vr*L.cols+vc;
+      if(isDone(vi))continue;
+      body+='<rect x="'+(ox+vc*(L.B+L.sash))+'" y="'+(oy+vr*(L.B+L.sash))+'" width="'+L.B+'" height="'+L.B+
+        '" fill="#FBF8F3" opacity="0.8"/>'+
+        '<rect x="'+(ox+vc*(L.B+L.sash))+'" y="'+(oy+vr*(L.B+L.sash))+'" width="'+L.B+'" height="'+L.B+
+        '" fill="none" stroke="rgba(46,43,39,.3)" stroke-width="'+(L.B/160)+'" stroke-dasharray="'+(L.B/14)+' '+(L.B/20)+'"/>';
+    }
+  }
+  /* tap targets for marking squares done */
+  if(interactive){
+    for(var hr=0;hr<L.rows;hr++)for(var hc=0;hc<L.cols;hc++){
+      body+='<rect class="cellhit" data-i="'+(hr*L.cols+hc)+'" x="'+(ox+hc*(L.B+L.sash))+'" y="'+(oy+hr*(L.B+L.sash))+
+        '" width="'+L.B+'" height="'+L.B+'" fill="transparent"/>';
+    }
+  }
 
+  return {L:L,svg:function(availW,availH){
+    var k=Math.min(availW/L.W, availH/L.H);
+    return '<svg width="'+Math.round(L.W*k)+'" height="'+Math.round(L.H*k)+'" viewBox="0 0 '+
+      L.W+' '+L.H+'"><defs>'+defs.join('')+'</defs>'+body+'</svg>';
+  }};
+}
+function quiltThumb(st,px){
+  var keep=state,out='';
+  try{state=st;out=buildQuilt(false).svg(px,px);}catch(e){out='';}
+  state=keep;
+  return out;
+}
+function drawQuilt(){
+  var q=buildQuilt(true),L=q.L;
   var availW=Math.min(780, window.innerWidth-470);
   if(availW<340)availW=Math.max(240,Math.min(620,window.innerWidth-70));
   var availH=Math.max(300, window.innerHeight-(window.innerWidth<1180?350:230));
-  var k=Math.min(availW/L.W, availH/L.H);
-  var pw=Math.round(L.W*k), ph=Math.round(L.H*k);
-  $('#stage').innerHTML='<svg width="'+pw+'" height="'+ph+'" viewBox="0 0 '+L.W+' '+L.H+'"><defs>'+defs.join('')+'</defs>'+body+'</svg>';
+  $('#stage').innerHTML=q.svg(availW,availH);
+  $$('#stage .cellhit').forEach(function(r){
+    r.onclick=function(){toggleDone(+r.getAttribute('data-i'));};
+  });
+  drawProgress();
 
   var tgt=L.target;
   $('#stats').innerHTML=
@@ -909,19 +1161,25 @@ function stat(v,l){return '<div class="stat"><b>'+v+'</b><span>'+l+'</span></div
 function extraSlots(){
   var L=layout(),o=[];
   if(L.sash>0)o.push('Sashing');
+  if(L.sash>0&&state.corner)o.push('Cornerstones');
   if(L.b1>0)o.push('Inner border');
   if(L.b2>0)o.push('Outer border');
   o.push('Binding');
   o.push('Backing');
   return o;
 }
+function slotLabel(slot){
+  var lib=fabList(slot);
+  if(!lib.length)return 'Tap to choose fabric';
+  if(lib.length===1)return fabById(lib[0]).name;
+  return lib.length+' fabrics, one per block';
+}
 function slotRow(slot,hl){
-  var f=fabById(state.fabrics[slot]);
   var b=el('button',{class:'slotrow'+(hl?' hl':''),onclick:function(){openFabricPicker(slot);}});
-  b.appendChild(el('div',{class:'sw',style:swatchStyle(f)}));
+  b.appendChild(el('div',{class:'sw',style:slotSwatch(slot)}));
   var nm=el('div',{class:'nm'});
   nm.appendChild(el('b',{text:slot}));
-  nm.appendChild(el('small',{text:f?f.name:'Tap to choose fabric'}));
+  nm.appendChild(el('small',{text:slotLabel(slot)}));
   b.appendChild(nm);
   return b;
 }
@@ -944,15 +1202,16 @@ function drawSlots(){
   /* fabric bar under the quilt */
   var bar=$('#fabbar');bar.innerHTML='';
   (pm?extraSlots():block.slots.concat(extraSlots())).forEach(function(s){
-    var f=fabById(state.fabrics[s]);
     var chip=el('button',{class:'chip',onclick:function(){openFabricPicker(s);}});
-    chip.appendChild(el('div',{class:'sw',style:swatchStyle(f)}));
+    chip.appendChild(el('div',{class:'sw',style:slotSwatch(s)}));
     var tx=el('div',{class:'tx'});
     tx.appendChild(el('b',{text:s}));
-    tx.appendChild(el('small',{text:f?f.name:'not chosen yet'}));
+    tx.appendChild(el('small',{text:fabList(s).length?slotLabel(s):'not chosen yet'}));
     chip.appendChild(tx);
     bar.appendChild(chip);
   });
+  var sb=$('#btnShuffleFab');
+  if(sb)sb.style.display=(!pm&&anyScrappy(block))?'':'none';
   /* mini stash */
   var m=$('#miniStash');m.innerHTML='';
   if(!stash.length){m.innerHTML='<div class="empty" style="grid-column:1/-1;padding:14px">No fabrics yet.</div>';}
@@ -974,11 +1233,15 @@ $('#mClose').onclick=closeModal;
 $('#modal').onclick=function(e){if(e.target===$('#modal'))closeModal();};
 
 function openFabricPicker(slot){
+  var block=blockById(state.block);
+  var multi=(!photoMode())&&block.slots.indexOf(slot)>=0;
   openModal('Fabric for: '+slot,function(b){
     if(!stash.length){
       b.appendChild(el('div',{class:'empty',html:'Your stash is empty. Add fabric photos in the Fabric Stash tab first.'}));
       return;
     }
+    if(multi)b.appendChild(el('p',{class:'hint',style:'margin:0 0 12px',
+      text:'Tap one fabric, or tap several and every block will use a different one from the set. Tap again to take a fabric back out.'}));
     var find=el('input',{type:'text',placeholder:'Search your stash, for example navy, gingham, dot',
       style:'margin-bottom:14px'});
     b.appendChild(find);
@@ -987,16 +1250,24 @@ function openFabricPicker(slot){
     function paint(){
       var q=find.value.trim().toLowerCase();
       g.innerHTML='';
-      g.appendChild(el('button',{class:'pick',onclick:function(){delete state.fabrics[slot];afterChange();closeModal();}},
+      g.appendChild(el('button',{class:'pick',onclick:function(){
+          delete state.fabrics[slot];if(state.scrap)delete state.scrap[slot];
+          afterChange();if(multi)paint();else closeModal();}},
         [el('div',{class:'im',style:'background:repeating-linear-gradient(45deg,#EFE9DF 0 6px,#E3DCD1 6px 12px)'}),
          el('div',{class:'cap',text:'Clear'})]));
-      var shown=0;
+      var shown=0,cur=fabList(slot);
       stash.forEach(function(f){
         if(q&&f.name.toLowerCase().indexOf(q)<0)return;
         shown++;
-        var on=state.fabrics[slot]===f.id;
-        g.appendChild(el('button',{class:'pick'+(on?' on':''),onclick:function(){state.fabrics[slot]=f.id;afterChange();closeModal();}},
-          [el('div',{class:'im',style:swatchStyle(f)}),el('div',{class:'cap',text:f.name})]));
+        var on=cur.indexOf(f.id)>=0;
+        g.appendChild(el('button',{class:'pick'+(on?' on':''),onclick:function(){
+          if(!multi){state.fabrics[slot]=[f.id];afterChange();closeModal();return;}
+          var list=fabList(slot),k=list.indexOf(f.id);
+          if(k>=0)list.splice(k,1); else list.push(f.id);
+          state.fabrics[slot]=list;
+          if(state.scrap)delete state.scrap[slot];
+          afterChange();paint();
+        }},[el('div',{class:'im',style:swatchStyle(f)}),el('div',{class:'cap',text:f.name})]));
       });
       if(!shown&&q)g.appendChild(el('div',{class:'empty',style:'grid-column:1/-1',text:'Nothing in your stash matches "'+find.value+'".'}));
     }
@@ -1007,7 +1278,7 @@ function openBlockPicker(){
   openModal('Choose a block',function(b){
     var g=el('div',{class:'pickgrid'});
     BLOCKS.forEach(function(bl){
-      var defs=[],seen={};
+      var defs=[],seen={_uid:'_b'+(++IDSEQ)};
       var svg='<svg viewBox="0 0 100 100">'+blockGroup(bl,100,defs,seen,false)+'</svg>';
       var on=state.block===bl.id;
       var btn=el('button',{class:'pick'+(on?' on':''),onclick:function(){
@@ -1020,26 +1291,62 @@ function openBlockPicker(){
 }
 function openProjects(){
   openModal('My Quilts',function(b){
-    var bar=el('div',{style:'display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap'});
+    var bar=el('div',{style:'display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap'});
+    bar.appendChild(el('button',{class:'btn sm',text:'Save this quilt',onclick:function(){closeModal();saveProject(false);}}));
+    bar.appendChild(el('button',{class:'btn sm',text:'Save as a copy',onclick:function(){closeModal();saveProject(true);}}));
     bar.appendChild(el('button',{class:'btn sm',text:'Start a new quilt',onclick:function(){
-      state=newState();applyState();afterChange();closeModal();toast('New quilt started');}}));
-    bar.appendChild(el('button',{class:'btn sm',text:'Download backup file',onclick:backup}));
-    var imp=el('button',{class:'btn sm',text:'Restore from backup',onclick:function(){$('#restore').click();}});
-    bar.appendChild(imp);
+      if(dirty&&!confirm('Start a new quilt? Anything unsaved here will be lost.'))return;
+      state=newState();applyState();afterChange();dirty=false;updateSaveState();closeModal();toast('New quilt started');}}));
+    bar.appendChild(el('div',{style:'flex:1'}));
+    bar.appendChild(el('button',{class:'btn sm',text:'Download backup',onclick:backup}));
+    bar.appendChild(el('button',{class:'btn sm',text:'Restore backup',onclick:function(){$('#restore').click();}}));
     b.appendChild(bar);
-    if(!projects.length){b.appendChild(el('div',{class:'empty',text:'No saved quilts yet. Press Save in the top bar.'}));return;}
-    var t=el('table');
-    t.innerHTML='<tr><th>Quilt</th><th>Block</th><th>Size</th><th>Saved</th><th></th></tr>';
-    projects.forEach(function(p){
-      var tr=el('tr');
-      tr.innerHTML='<td><b>'+(p.name||'Untitled')+'</b></td><td>'+blockById(p.block).name+'</td>'+
-        '<td>'+(sizeById(p.size).n)+'</td><td>'+new Date(p.saved).toLocaleDateString()+'</td>';
-      var td=el('td',{style:'text-align:right'});
-      td.appendChild(el('button',{class:'btn sm',text:'Open',onclick:function(){
-        state=JSON.parse(JSON.stringify(p));applyState();afterChange();closeModal();toast('Opened '+(p.name||'quilt'));}}));
-      tr.appendChild(td);t.appendChild(tr);
-    });
-    b.appendChild(t);
+
+    if(!projects.length){
+      b.appendChild(el('div',{class:'empty',
+        text:'No saved quilts yet. Press "Save this quilt" above, give it a name, and it will appear here.'}));
+      return;
+    }
+    var g=el('div',{class:'qgrid'});
+    b.appendChild(g);
+    function paint(){
+      g.innerHTML='';
+      projects.forEach(function(p){
+        var card=el('div',{class:'qcard'+(p.id===state.id?' on':'')});
+        var th=el('div',{class:'th'});
+        th.innerHTML=quiltThumb(JSON.parse(JSON.stringify(p)),150)||'<span class="hint">no preview</span>';
+        card.appendChild(th);
+        var mt=el('div',{class:'mt'});
+        mt.appendChild(el('b',{text:p.name||'Untitled'}));
+        var L2=(p.mode==='photos')?'your own squares':blockById(p.block).name;
+        var tot=p.cols*p.rows,dn=(p.done||[]).filter(function(i){return i<tot;}).length;
+        mt.appendChild(el('small',{text:L2+' · '+p.cols+' x '+p.rows+
+          (dn?' · '+dn+' of '+tot+' made':'')+' · saved '+new Date(p.saved).toLocaleDateString()}));
+        card.appendChild(mt);
+        var acts=el('div',{class:'acts'});
+        acts.appendChild(el('button',{class:'btn sm',text:'Open',onclick:function(){
+          if(dirty&&!confirm('Open "'+(p.name||'this quilt')+'"? Anything unsaved here will be lost.'))return;
+          state=JSON.parse(JSON.stringify(p));applyState();afterChange();dirty=false;updateSaveState();
+          closeModal();toast('Opened "'+(p.name||'quilt')+'"');}}));
+        acts.appendChild(el('button',{class:'btn sm',text:'Rename',onclick:function(){
+          var v=prompt('New name for this quilt:',p.name||'');
+          if(v===null)return;
+          v=v.trim();if(!v){toast('It needs a name.');return;}
+          p.name=v;if(state.id===p.id){state.name=v;$('#qname').value=v;saveCur();}
+          writeProjects();paint();toast('Renamed');}}));
+        acts.appendChild(el('button',{class:'btn sm',text:'Duplicate',onclick:function(){
+          var c=JSON.parse(JSON.stringify(p));c.id='q'+Date.now();c.name=(p.name||'Untitled')+' copy';c.saved=Date.now();
+          projects.unshift(c);writeProjects();paint();toast('Duplicated');}}));
+        acts.appendChild(el('button',{class:'btn sm',text:'Delete',onclick:function(){
+          if(!confirm('Delete "'+(p.name||'Untitled')+'" for good? This cannot be undone.'))return;
+          projects=projects.filter(function(x){return x.id!==p.id;});
+          writeProjects();paint();toast('Deleted');
+          if(!projects.length)closeModal();}}));
+        card.appendChild(acts);
+        g.appendChild(card);
+      });
+    }
+    paint();
   });
 }
 
@@ -1061,14 +1368,29 @@ function buildCutList(){
     nBlocks=L.cols*L.rows-nPlain;
   }
   var groups={};
-  function add(slot,spec,qty,note){
-    var key=slot+'|'+spec.w.toFixed(3)+'|'+spec.h.toFixed(3)+'|'+spec.how+'|'+(note||'');
-    if(!groups[key])groups[key]={slot:slot,w:spec.w,h:spec.h,per:spec.per,how:spec.how,note:note||'',qty:0};
+  function add(slot,spec,qty,note,fabId){
+    var key=slot+'|'+(fabId||'')+'|'+spec.w.toFixed(3)+'|'+spec.h.toFixed(3)+'|'+spec.how+'|'+(note||'');
+    if(!groups[key])groups[key]={slot:slot,fabId:fabId||'',w:spec.w,h:spec.h,per:spec.per,how:spec.how,note:note||'',qty:0};
     groups[key].qty+=qty;
   }
+  function scrapCounts(slot){
+    var m={},arr=(state.scrap||{})[slot]||[],r,c,i,id;
+    for(r=0;r<L.rows;r++)for(c=0;c<L.cols;c++){
+      if(state.set==='checker'&&((r+c)%2===1))continue;
+      i=r*L.cols+c;id=arr[i];
+      if(id)m[id]=(m[id]||0)+1;
+    }
+    return m;
+  }
   if(!photoMode()){
+    ensureScrap(block);
     block.patches.forEach(function(p){
-      add(p.slot,cutSpec(p.cut,u),nBlocks,'for the block');
+      if(isScrappy(p.slot)){
+        var m=scrapCounts(p.slot);
+        Object.keys(m).forEach(function(fid){
+          add(p.slot,cutSpec(p.cut,u),m[fid],'for '+m[fid]+' block'+(m[fid]===1?'':'s'),fid);
+        });
+      } else add(p.slot,cutSpec(p.cut,u),nBlocks,'for the block');
     });
     if(nPlain>0)add(BG,cutSpec({t:'rect',w:1,h:1},L.B),nPlain,'plain alternate block');
   }
@@ -1078,31 +1400,41 @@ function buildCutList(){
     if(width<=0||totalLen<=0)return;
     var n=Math.ceil(totalLen/(WOF-2));
     var key=slot+'|wof|'+width.toFixed(3)+'|'+note;
-    if(!groups[key])groups[key]={slot:slot,w:width,h:width,per:1,how:'strip',wof:true,note:note,qty:0};
+    if(!groups[key])groups[key]={slot:slot,fabId:'',w:width,h:width,per:1,how:'strip',wof:true,note:note,qty:0};
     groups[key].qty+=n;
   }
   /* sashing */
   if(L.sash>0){
-    var vert=L.rows*(L.cols-1);
-    if(vert>0)add('Sashing',{w:L.sash+SEAM,h:L.B+SEAM,per:1,how:'strip'},vert,'between the blocks');
-    if(L.rows>1)wofStrips('Sashing',L.sash+SEAM,(L.rows-1)*(L.centerW+1),'joined and cut to '+frac(L.centerW)+'in for between the rows');
+    var vLines=sashLines(L,0,L.cols,L.B).length, hLines=sashLines(L,0,L.rows,L.B).length;
+    if(state.corner){
+      var shortN=L.rows*vLines+L.cols*hLines;
+      if(shortN>0)add('Sashing',{w:L.sash+SEAM,h:L.B+SEAM,per:1,how:'strip'},shortN,
+        'short strips, '+(L.rows*vLines)+' upright and '+(L.cols*hLines)+' across, joined with cornerstones');
+      if(vLines*hLines>0)add('Cornerstones',{w:L.sash+SEAM,h:L.sash+SEAM,per:1,how:'square'},vLines*hLines,
+        'one at every crossing, '+vLines+' across by '+hLines+' down');
+    } else {
+      if(L.rows*vLines>0)add('Sashing',{w:L.sash+SEAM,h:L.B+SEAM,per:1,how:'strip'},L.rows*vLines,'between the blocks');
+      if(hLines>0)wofStrips('Sashing',L.sash+SEAM,hLines*(L.centerW+1),
+        'joined and cut to '+frac(L.centerW)+'in, '+hLines+' of them across the quilt');
+    }
   }
   /* borders */
   if(L.b1>0)wofStrips('Inner border',L.b1+SEAM,2*(L.centerH+1)+2*(L.centerW+2*L.b1+1),'2 sides at '+frac(L.centerH)+'in, top and bottom at '+frac(L.centerW+2*L.b1)+'in');
   if(L.b2>0)wofStrips('Outer border',L.b2+SEAM,2*(L.centerH+2*L.b1+1)+2*(L.centerW+2*L.b1+2*L.b2+1),'2 sides at '+frac(L.centerH+2*L.b1)+'in, top and bottom at '+frac(L.centerW+2*L.b1+2*L.b2)+'in');
 
   /* group by fabric slot */
-  var bySlot={};
+  var bySlot={},order=[];
   Object.keys(groups).forEach(function(k){
-    var g=groups[k];
-    if(!bySlot[g.slot])bySlot[g.slot]=[];
-    bySlot[g.slot].push(g);
+    var g=groups[k],sk=g.slot+'\u0000'+g.fabId;
+    if(!bySlot[sk]){bySlot[sk]=[];order.push(sk);}
+    bySlot[sk].push(g);
   });
 
-  /* yardage per slot */
+  /* yardage per fabric */
   var out=[];
-  Object.keys(bySlot).forEach(function(slot){
-    var rows=bySlot[slot],inches=0;
+  order.forEach(function(sk){
+    var slot=sk.split('\u0000')[0],fabId=sk.split('\u0000')[1];
+    var rows=bySlot[sk],inches=0;
     rows.forEach(function(g){
       if(g.wof){g.units=g.qty;g.strips=g.qty;inches+=g.qty*g.w;return;}
       var units=Math.ceil(g.qty/g.per);
@@ -1111,7 +1443,7 @@ function buildCutList(){
       g.units=units;g.strips=strips;
       inches+=strips*g.h;
     });
-    out.push({slot:slot,rows:rows,yards:up8(inches*EXTRA/36)});
+    out.push({slot:slot,fabId:fabId,rows:rows,yards:up8(inches*EXTRA/36)});
   });
 
   /* binding + backing */
@@ -1134,7 +1466,7 @@ function drawCutList(){
     text:($('#qname').value.trim()||'Untitled quilt')+' · '+(photoMode()?'your own squares':blockById(state.block).name)+' · '+
       frac(L.B)+'in blocks · '+L.cols+' across by '+L.rows+' down · finished '+frac(L.W)+' x '+frac(L.H)+'in'}));
   data.forEach(function(sec){
-    var f=fabById(state.fabrics[sec.slot]);
+    var f=fabById(sec.fabId)||fabById(fabList(sec.slot)[0]);
     var card=el('div',{class:'card',style:'margin-bottom:14px;box-shadow:none'});
     var hd=el('div',{class:'fabhead'});
     hd.appendChild(el('div',{class:'sw',style:swatchStyle(f)}));
@@ -1282,16 +1614,21 @@ function applyState(){
   $('#qsize').value=state.size;$('#cw').value=state.cw;$('#ch').value=state.ch;
   $('#bsize').value=state.bsize;$('#cols').value=state.cols;$('#rows').value=state.rows;
   $('#sash').value=state.sash;$('#b1').value=state.b1;$('#b2').value=state.b2;$('#setting').value=state.set;
+  $('#sashEdge').checked=!!state.sashEdge;$('#corner').checked=!!state.corner;
+  $('#sashOpts').style.display=(+state.sash>0)?'':'none';
   $('#customWrap').style.display=state.size==='custom'?'grid':'none';
   $('#randRot').checked=!!state.randRot;
 }
 function afterChange(){
   drawBlockPreview();drawQuilt();drawSlots();drawStash();drawBlockPhotos();drawCutList();saveCur();
+  dirty=true;updateSaveState();
 }
 function readForm(){
   state.size=$('#qsize').value;state.cw=+$('#cw').value;state.ch=+$('#ch').value;
   state.bsize=+$('#bsize').value;state.cols=+$('#cols').value;state.rows=+$('#rows').value;
   state.sash=+$('#sash').value;state.b1=+$('#b1').value;state.b2=+$('#b2').value;
+  state.sashEdge=$('#sashEdge').checked;state.corner=$('#corner').checked;
+  $('#sashOpts').style.display=(state.sash>0)?'':'none';
   state.set=$('#setting').value;state.name=$('#qname').value;
   $('#customWrap').style.display=state.size==='custom'?'grid':'none';
 }
@@ -1326,7 +1663,7 @@ function init(){
   $('#btnFit').onclick=function(){readForm();fitBlocks();readForm();afterChange();toast('Fitted to '+(sizeById(state.size).n||'your size'));};
   $('#btnBlocks').onclick=openBlockPicker;
   $('#btnProjects').onclick=openProjects;
-  $('#btnSave').onclick=saveProject;
+  $('#btnSave').onclick=function(){saveProject(false);};
   $('#btnGoStash').onclick=function(){$$('#tabs button')[1].click();};
   $('#btnPrint').onclick=function(){window.print();};
   $('#btnStarters').onclick=addStarters;
@@ -1334,6 +1671,18 @@ function init(){
     b.onclick=function(){state.mode=b.dataset.m;if(photoMode())ensureArrangement();afterChange();};
   });
   $('#btnRandom').onclick=randomizeLayout;
+  $('#btnShuffleFab').onclick=shuffleFabrics;
+  $('#progPlus').onclick=function(){bumpDone(1);};
+  $('#progMinus').onclick=function(){bumpDone(-1);};
+  $('#progReset').onclick=function(){
+    if(!doneList().length){toast('Nothing marked yet.');return;}
+    if(!confirm('Clear the count and start this quilt over? Your design stays exactly as it is.'))return;
+    state.done=[];afterChange();toast('Count cleared');
+  };
+  $('#showProg').onchange=function(){state.showProgress=$('#showProg').checked;afterChange();};
+  ['sashEdge','corner'].forEach(function(id){
+    $('#'+id).onchange=function(){readForm();fitBlocks();readForm();afterChange();};
+  });
   $('#randRot').onchange=function(){
     state.randRot=$('#randRot').checked;
     if(state.randRot&&state.arrange&&state.arrange.length)randomizeLayout();
@@ -1379,8 +1728,10 @@ function init(){
     };
     r.readAsText(f);
   };
+  dirty=false;updateSaveState();
   window.addEventListener('resize',function(){clearTimeout(window._rz);window._rz=setTimeout(drawQuilt,160);});
   afterChange();
+  dirty=false;updateSaveState();
 }
 init();
 })();
