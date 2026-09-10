@@ -340,6 +340,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
           <div class="hd"><h3>Block layout</h3><div class="spacer"></div>
             <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
               <input type="checkbox" id="randRot" style="width:auto;margin:0"> Turn blocks randomly</label>
+            <button class="btn" id="btnArrange">Arrange by colour</button>
             <button class="btn primary" id="btnRandom">Randomize</button></div>
           <div class="bd"><div class="hint" id="layoutInfo"></div></div>
         </div>
@@ -875,10 +876,12 @@ function layoutInfoText(){
   var L=layout(),need=L.cols*L.rows,n=photos.length;
   if(!n)return 'No block photos yet. Upload some in the My Blocks tab and they will fill the quilt.';
   if(n>=need)return 'This quilt needs '+need+' squares and you have '+n+' photos, so '+(n-need)+
-    ' will sit out. Randomize picks a different set and a different order every time.';
+    ' will sit out. Randomize picks a different set each time. Arrange by colour looks at the edge of '+
+    'every photo and works out an order where no two touching edges are close in colour.';
   var per=(need/n);
   return 'This quilt needs '+need+' squares and you have '+n+' photos, so each one is used about '+
-    (per<1.5?'once':(Math.round(per)+' times'))+'. Randomize reshuffles them and tries not to put the same square next to itself.';
+    (per<1.5?'once':(Math.round(per)+' times'))+'. Randomize deals them out afresh. Arrange by colour '+
+    'looks at the edge of every photo and works out an order where no two touching edges are close in colour.';
 }
 
 /* ============================================================
@@ -961,6 +964,126 @@ function drawProgress(){
   else if(left===0)t='All '+n+' squares are done. Time to sew the rows together.';
   else t=left+' still to make. Tap any square on the quilt to mark it, or tap a shaded one to take it back.';
   $('#progHint').textContent=t;
+}
+
+/* ============================================================
+   4e. ARRANGE BY COLOUR - keep similar edges apart
+   ============================================================ */
+/* Each photo gets four edge colours: top, right, bottom, left. */
+function sampleEdges(img){
+  var w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+  var cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  var ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
+  function band(x0,y0,x1,y1){
+    x0=Math.max(0,Math.floor(x0));y0=Math.max(0,Math.floor(y0));
+    x1=Math.min(w,Math.ceil(x1));y1=Math.min(h,Math.ceil(y1));
+    if(x1<=x0||y1<=y0)return [128,128,128];
+    var d;
+    try{d=ctx.getImageData(x0,y0,x1-x0,y1-y0).data;}catch(e){return [128,128,128];}
+    var r=0,g=0,b=0,n=0;
+    for(var i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];n++;}
+    return n?[Math.round(r/n),Math.round(g/n),Math.round(b/n)]:[128,128,128];
+  }
+  var t=h*0.12,s=w*0.12,inx=w*0.12,iny=h*0.12;
+  return [band(inx,0,w-inx,t),          /* top */
+          band(w-s,iny,w,h-iny),        /* right */
+          band(inx,h-t,w-inx,h),        /* bottom */
+          band(0,iny,s,h-iny)];         /* left */
+}
+function ensureEdges(cb){
+  var todo=photos.filter(function(p){return !p.edges;});
+  if(!todo.length){cb();return;}
+  var left=todo.length,grey=[[128,128,128],[128,128,128],[128,128,128],[128,128,128]];
+  todo.forEach(function(p){
+    var im=new Image();
+    im.onload=function(){try{p.edges=sampleEdges(im);}catch(e){p.edges=grey;}if(!--left){savePhotos();cb();}};
+    im.onerror=function(){p.edges=grey;if(!--left){savePhotos();cb();}};
+    im.src=p.img;
+  });
+}
+/* perceptual-ish distance, roughly 0 to 765 */
+function colourGap(a,b){
+  if(!a||!b)return 400;
+  var rm=(a[0]+b[0])/2,dr=a[0]-b[0],dg=a[1]-b[1],db=a[2]-b[2];
+  return Math.sqrt((2+rm/256)*dr*dr+4*dg*dg+(2+(255-rm)/256)*db*db);
+}
+/* which stored edge faces direction d once the block is turned by rot */
+function edgeFacing(p,rot,d){
+  if(!p||!p.edges)return null;
+  var turns=((rot||0)/90)|0;
+  return p.edges[((d-turns)%4+4)%4];
+}
+var NEAR=110;                 /* below this the two edges read as the same colour */
+function arrangementCost(arr,rots,L){
+  var cost=0,r,c,i,a,bq,ga;
+  for(r=0;r<L.rows;r++)for(c=0;c<L.cols;c++){
+    i=r*L.cols+c;
+    a=photoById(arr[i]);
+    if(c<L.cols-1){
+      bq=photoById(arr[i+1]);
+      if(arr[i]===arr[i+1])cost+=90000;
+      ga=colourGap(edgeFacing(a,rots[i],1),edgeFacing(bq,rots[i+1],3));
+      if(ga<NEAR)cost+=(NEAR-ga)*(NEAR-ga);
+    }
+    if(r<L.rows-1){
+      bq=photoById(arr[i+L.cols]);
+      if(arr[i]===arr[i+L.cols])cost+=90000;
+      ga=colourGap(edgeFacing(a,rots[i],2),edgeFacing(bq,rots[i+L.cols],0));
+      if(ga<NEAR)cost+=(NEAR-ga)*(NEAR-ga);
+    }
+  }
+  return cost;
+}
+function closePairs(arr,rots,L){
+  var n=0,r,c,i,a,bq;
+  for(r=0;r<L.rows;r++)for(c=0;c<L.cols;c++){
+    i=r*L.cols+c;a=photoById(arr[i]);
+    if(c<L.cols-1){bq=photoById(arr[i+1]);
+      if(colourGap(edgeFacing(a,rots[i],1),edgeFacing(bq,rots[i+1],3))<NEAR)n++;}
+    if(r<L.rows-1){bq=photoById(arr[i+L.cols]);
+      if(colourGap(edgeFacing(a,rots[i],2),edgeFacing(bq,rots[i+L.cols],0))<NEAR)n++;}
+  }
+  return n;
+}
+function arrangeByColour(){
+  if(!photos.length){toast('Add some block photos first.');return;}
+  var btn=$('#btnArrange');
+  if(btn){btn.disabled=true;btn.textContent='Working it out...';}
+  ensureEdges(function(){
+    var L=layout(),need=L.cols*L.rows,lib=photos.map(function(p){return p.id;});
+    var turns=[0,90,180,270],useRot=!!state.randRot;
+    var best=null,bestCost=Infinity,tries=0;
+    for(var start=0;start<4;start++){
+      var arr=balancedPool(lib,need),rots=[],i;
+      for(i=0;i<need;i++)rots.push(useRot?turns[Math.floor(Math.random()*4)]:0);
+      var cost=arrangementCost(arr,rots,L);
+      for(var it=0;it<4000;it++){
+        tries++;
+        var x=Math.floor(Math.random()*need),y=Math.floor(Math.random()*need);
+        if(useRot&&(it%3===2)){
+          var oldR=rots[x];
+          rots[x]=turns[Math.floor(Math.random()*4)];
+          var c2=arrangementCost(arr,rots,L);
+          if(c2<=cost)cost=c2; else rots[x]=oldR;
+          continue;
+        }
+        if(x===y)continue;
+        var t1=arr[x];arr[x]=arr[y];arr[y]=t1;
+        var c3=arrangementCost(arr,rots,L);
+        if(c3<=cost)cost=c3;
+        else {var t2=arr[x];arr[x]=arr[y];arr[y]=t2;}
+        if(cost===0)break;
+      }
+      if(cost<bestCost){bestCost=cost;best={a:arr.slice(),r:rots.slice()};}
+      if(bestCost===0)break;
+    }
+    state.arrange=best.a;state.rots=best.r;
+    var bad=closePairs(best.a,best.r,L);
+    afterChange();
+    if(btn){btn.disabled=false;btn.textContent='Arrange by colour';}
+    if(bad===0)toast('Arranged. No two touching edges are close in colour.');
+    else toast('Arranged as well as it goes. '+bad+' pair'+(bad===1?'':'s')+' of edges are still similar.');
+  });
 }
 
 /* ============================================================
@@ -1682,9 +1805,10 @@ function addBlockPhoto(file){
       var max=440,w=img.width,h=img.height,s=Math.min(1,max/Math.max(w,h));
       var cv=document.createElement('canvas');cv.width=Math.round(w*s);cv.height=Math.round(h*s);
       cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      var edges=null;try{edges=sampleEdges(cv);}catch(e){}
       photos.push({id:'b'+Date.now()+Math.floor(Math.random()*999),
         name:file.name.replace(/\.[^.]+$/,'').slice(0,28)||'Square',
-        img:cv.toDataURL('image/jpeg',0.8)});
+        img:cv.toDataURL('image/jpeg',0.8),edges:edges});
       state.arrange=[];state.rots=[];
       savePhotos();
       if(!photoMode()){state.mode='photos';applyState();}
@@ -1785,6 +1909,7 @@ function init(){
   $('#btnRandom').onclick=randomizeLayout;
   $('#btnShuffleFab').onclick=shuffleFabrics;
   $('#btnExport').onclick=openExport;
+  $('#btnArrange').onclick=arrangeByColour;
   $('#progPlus').onclick=function(){bumpDone(1);};
   $('#progMinus').onclick=function(){bumpDone(-1);};
   $('#progReset').onclick=function(){
