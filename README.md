@@ -33,6 +33,10 @@ size, drop in photos of your own fabrics, and it draws the quilt and works out t
   squares are already pieced.
   Tell it how many yards you have of something and it flags a shortfall. Prints cleanly.
 
+- **Save as a picture.** Exports the quilt as a PNG, about 2400px on the long side, either the
+  finished design or with the still-to-make squares shaded. If you have block photos it can also
+  lay them out as a labelled contact sheet. The picture appears in the app so you can long-press
+  it straight into Photos on a phone or iPad, or download it on a computer.
 - **Squares made.** A counter under the quilt tracks how many blocks you have finished and how
   many are left, with a progress bar. Tap a square on the quilt map to mark it done, or use the
   Finished one button. Squares still to make are veiled with a dashed outline so the quilt fills
@@ -69,6 +73,10 @@ Open it in a browser and edit. To add a block, add an entry to the `BLOCKS` arra
 cutting list is derived from, so a new block gets correct yardage for free.
 
 If you change any file, bump `CACHE` in `sw.js` so installed copies pick up the new version.
+
+PNG export works by serialising the quilt SVG to a `data:image/svg+xml` URL, loading it into an
+`Image`, and drawing that onto a canvas. It only works because every fabric is embedded as a data
+URI; any externally hosted image would taint the canvas and `toDataURL` would throw.
 
 ## Cutting maths
 

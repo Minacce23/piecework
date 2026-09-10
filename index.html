@@ -248,6 +248,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <div class="spacer"></div>
     <input class="qname" id="qname" placeholder="Name this quilt">
     <span class="hint" id="saveState"></span>
+    <button class="btn" id="btnExport">Save picture</button>
     <button class="btn" id="btnProjects">My Quilts</button>
     <button class="btn primary" id="btnSave">Save</button>
   </div>
@@ -1027,11 +1028,11 @@ function drawBlockPreview(){
     p.onclick=function(){openFabricPicker(p.getAttribute('data-slot'));};
   });
 }
-function buildQuilt(interactive){
+function buildQuilt(interactive,noShade){
   var L=layout(),block=blockById(state.block),plain=ALT;
   var UID='_u'+(++IDSEQ);
   var defs=[],seen={_uid:UID},body='';
-  var shade=shading();
+  var shade=noShade?false:shading();
   var bgFill=fillFor(block,BG,defs,seen);
   var bd1=fillFor({slots:[],grid:1},'Inner border',defs,seen);
   var bd2=fillFor({slots:[],grid:1},'Outer border',defs,seen);
@@ -1122,10 +1123,12 @@ function buildQuilt(interactive){
     }
   }
 
-  return {L:L,svg:function(availW,availH){
+  return {L:L,svg:function(availW,availH,standalone){
     var k=Math.min(availW/L.W, availH/L.H);
-    return '<svg width="'+Math.round(L.W*k)+'" height="'+Math.round(L.H*k)+'" viewBox="0 0 '+
-      L.W+' '+L.H+'"><defs>'+defs.join('')+'</defs>'+body+'</svg>';
+    var ns=standalone?' xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"':'';
+    var bg=standalone?'<rect x="0" y="0" width="'+L.W+'" height="'+L.H+'" fill="#FBF8F3"/>':'';
+    return '<svg'+ns+' width="'+Math.round(L.W*k)+'" height="'+Math.round(L.H*k)+'" viewBox="0 0 '+
+      L.W+' '+L.H+'"><defs>'+defs.join('')+'</defs>'+bg+body+'</svg>';
   }};
 }
 function quiltThumb(st,px){
@@ -1347,6 +1350,115 @@ function openProjects(){
       });
     }
     paint();
+  });
+}
+
+/* ============================================================
+   8b. SAVE AS A PICTURE
+   ============================================================ */
+function svgToPng(svgText,w,h,cb){
+  var img=new Image();
+  img.onload=function(){
+    try{
+      var cv=document.createElement('canvas');
+      cv.width=w;cv.height=h;
+      var ctx=cv.getContext('2d');
+      ctx.fillStyle='#FBF8F3';ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      cb(cv.toDataURL('image/png'));
+    }catch(e){cb(null,e);}
+  };
+  img.onerror=function(){cb(null,new Error('could not render'));};
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgText);
+}
+function quiltPngSVG(noShade,long){
+  var q=buildQuilt(false,noShade),L=q.L;
+  var k=long/Math.max(L.W,L.H);
+  return {text:q.svg(L.W*k,L.H*k,true),w:Math.round(L.W*k),h:Math.round(L.H*k)};
+}
+function squaresSheetSVG(long){
+  var lib=photos.slice();
+  if(!lib.length)return null;
+  var n=lib.length,cols=Math.ceil(Math.sqrt(n)),rows=Math.ceil(n/cols);
+  var cell=100,gap=10,lab=22,pad=22;
+  var W=pad*2+cols*cell+(cols-1)*gap, H=pad*2+rows*(cell+lab)+(rows-1)*gap;
+  var s='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+
+    Math.round(W*long/Math.max(W,H))+'" height="'+Math.round(H*long/Math.max(W,H))+
+    '" viewBox="0 0 '+W+' '+H+'"><rect width="'+W+'" height="'+H+'" fill="#FBF8F3"/>';
+  lib.forEach(function(p,i){
+    var c=i%cols,r=Math.floor(i/cols);
+    var x=pad+c*(cell+gap), y=pad+r*(cell+lab+gap);
+    s+='<image href="'+p.img+'" x="'+x+'" y="'+y+'" width="'+cell+'" height="'+cell+
+       '" preserveAspectRatio="xMidYMid slice"/>'+
+       '<rect x="'+x+'" y="'+y+'" width="'+cell+'" height="'+cell+'" fill="none" stroke="rgba(46,43,39,.25)" stroke-width="0.7"/>'+
+       '<text x="'+(x+cell/2)+'" y="'+(y+cell+13)+'" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" '+
+       'font-size="8" fill="#7C756B">'+String(p.name||'').replace(/[<>&]/g,'').slice(0,22)+'</text>';
+  });
+  var sc=long/Math.max(W,H);
+  return {text:s+'</svg>',w:Math.round(W*sc),h:Math.round(H*sc),count:n};
+}
+function openExport(){
+  openModal('Save as a picture',function(b){
+    var opts=el('div',{style:'display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px'});
+    var seg=el('div',{class:'seg',style:'max-width:340px;flex:1'});
+    var modeQuilt=el('button',{class:'on',text:'The whole quilt'});
+    var modeSheet=el('button',{text:'My squares in a grid'});
+    seg.appendChild(modeQuilt);seg.appendChild(modeSheet);
+    opts.appendChild(seg);
+    var shadeBox=el('input',{type:'checkbox',style:'width:auto;margin:0'});
+    var shadeLbl=el('label',{class:'chk',style:'margin:0'});
+    shadeLbl.appendChild(shadeBox);
+    shadeLbl.appendChild(el('span',{text:'Show which squares are still to make'}));
+    opts.appendChild(shadeLbl);
+    b.appendChild(opts);
+
+    var box=el('div',{style:'background:#F4F0E8;border:1px solid var(--line);border-radius:12px;padding:16px;'+
+      'display:flex;align-items:center;justify-content:center;min-height:260px;margin-bottom:12px'});
+    b.appendChild(box);
+    var note=el('p',{class:'hint',style:'margin:0 0 12px'});
+    b.appendChild(note);
+    var row=el('div',{style:'display:flex;gap:8px;flex-wrap:wrap'});
+    b.appendChild(row);
+
+    var mode='quilt',url=null;
+    function fname(){
+      var n=(state.name||$('#qname').value||'quilt').replace(/[^A-Za-z0-9 _-]/g,'').trim()||'quilt';
+      return n.replace(/\s+/g,'-').toLowerCase()+(mode==='sheet'?'-squares':'')+'.png';
+    }
+    function render(){
+      box.innerHTML='<span class="hint">making the picture...</span>';
+      row.innerHTML='';url=null;
+      var spec=(mode==='sheet')?squaresSheetSVG(2000):quiltPngSVG(!shadeBox.checked,2400);
+      if(!spec){
+        box.innerHTML='<span class="hint">No block photos yet. Upload some in the My Blocks tab and they will appear here as a grid.</span>';
+        note.textContent='';return;
+      }
+      svgToPng(spec.text,spec.w,spec.h,function(png,err){
+        if(!png){
+          box.innerHTML='<span class="hint">The picture could not be made in this browser. Try Chrome or Safari on a computer.</span>';
+          note.textContent=err?String(err.message||err):'';
+          return;
+        }
+        url=png;
+        box.innerHTML='';
+        var im=el('img',{src:png,style:'max-width:100%;max-height:52vh;height:auto;border-radius:6px;'+
+          'box-shadow:0 6px 18px rgba(46,43,39,.18)'});
+        box.appendChild(im);
+        note.textContent='On a phone or iPad, press and hold the picture above and choose Add to Photos. On a computer, use the button below, or right click the picture and save it.';
+        row.innerHTML='';
+        var a=el('a',{class:'btn primary',href:png,download:fname(),text:'Download the picture'});
+        row.appendChild(a);
+        row.appendChild(el('span',{class:'hint',style:'align-self:center',
+          text:spec.w+' by '+spec.h+' pixels'+(spec.count?', '+spec.count+' squares':'')}));
+      });
+    }
+    modeQuilt.onclick=function(){mode='quilt';modeQuilt.classList.add('on');modeSheet.classList.remove('on');
+      shadeLbl.style.display='';render();};
+    modeSheet.onclick=function(){mode='sheet';modeSheet.classList.add('on');modeQuilt.classList.remove('on');
+      shadeLbl.style.display='none';render();};
+    shadeBox.onchange=render;
+    if(!photos.length)modeSheet.style.display='none';
+    render();
   });
 }
 
@@ -1672,6 +1784,7 @@ function init(){
   });
   $('#btnRandom').onclick=randomizeLayout;
   $('#btnShuffleFab').onclick=shuffleFabrics;
+  $('#btnExport').onclick=openExport;
   $('#progPlus').onclick=function(){bumpDone(1);};
   $('#progMinus').onclick=function(){bumpDone(-1);};
   $('#progReset').onclick=function(){

@@ -1,6 +1,6 @@
 /* Piecework service worker
    Bump CACHE when you change any file so devices pick up the new version. */
-var CACHE = 'piecework-v7';
+var CACHE = 'piecework-v8';
 var CORE = [
   './',
   './index.html',
