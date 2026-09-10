@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#7C8B6F">
+<meta name="description" content="Plan a quilt from traditional blocks, your own fabric stash and a cutting list that works itself out.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./favicon.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Piecework">
+<title>Piecework · Quilt Planner</title>
+<style>
+:root{
+  --paper:#FBF8F3; --card:#FFFFFF; --ink:#2E2B27; --muted:#7C756B;
+  --line:#E5DED3; --line2:#D6CCBD;
+  --sage:#7C8B6F; --sage-dk:#65735A; --clay:#B4705A; --gold:#C9A227;
+  --shadow:0 1px 2px rgba(46,43,39,.06), 0 6px 18px rgba(46,43,39,.06);
+  --r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.01em}
+
+/* ---------- header ---------- */
+header.top{
+  position:sticky;top:0;z-index:40;
+  background:rgba(251,248,243,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.top-in{max-width:1500px;margin:0 auto;padding:10px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{width:30px;height:30px;flex:0 0 auto}
+.brand h1{font-size:17px}
+.brand .sub{font-size:11px;color:var(--muted);letter-spacing:.10em;text-transform:uppercase}
+.tabs{display:flex;gap:2px;background:#EFE9DF;padding:3px;border-radius:10px}
+.tabs button{
+  border:0;background:transparent;padding:6px 14px;border-radius:8px;
+  font-size:13px;font-weight:500;color:var(--muted)
+}
+.tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.spacer{flex:1}
+.qname{
+  border:1px solid var(--line2);background:var(--card);border-radius:9px;
+  padding:7px 11px;width:190px;font-size:13px
+}
+.btn{
+  border:1px solid var(--line2);background:var(--card);border-radius:9px;
+  padding:7px 13px;font-size:13px;font-weight:500;box-shadow:0 1px 1px rgba(0,0,0,.03)
+}
+.btn:hover{border-color:#BFB4A2}
+.btn.primary{background:var(--sage);border-color:var(--sage-dk);color:#fff}
+.btn.primary:hover{background:var(--sage-dk)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{background:#EFE9DF;color:var(--ink)}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+
+/* ---------- layout ---------- */
+main{max-width:1500px;margin:0 auto;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+.top-in{padding-top:calc(10px + env(safe-area-inset-top))}
+.pane{display:none}
+.pane.on{display:block}
+.cols{display:grid;grid-template-columns:270px minmax(0,1fr) 290px;gap:16px;align-items:start}
+@media(max-width:1180px){
+  .cols{grid-template-columns:1fr}
+  .cols > *:nth-child(1){order:3}
+  .cols > *:nth-child(2){order:1}
+  .cols > *:nth-child(3){order:2}
+}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card .hd{padding:11px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.card .hd h3{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.card .bd{padding:14px}
+.stack{display:flex;flex-direction:column;gap:14px}
+
+label.f{display:block;margin-bottom:11px}
+label.f > span{display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px;letter-spacing:.02em}
+select,input[type=number],input[type=text]{
+  width:100%;padding:7px 9px;border:1px solid var(--line2);border-radius:8px;background:var(--paper)
+}
+input[type=number]{-moz-appearance:textfield}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.4}
+
+/* quilt stage */
+.stage{
+  background:
+    linear-gradient(45deg,#F2ECE2 25%,transparent 25%,transparent 75%,#F2ECE2 75%),
+    linear-gradient(45deg,#F2ECE2 25%,transparent 25%,transparent 75%,#F2ECE2 75%);
+  background-size:18px 18px;background-position:0 0,9px 9px;background-color:#F8F4EC;
+  border:1px solid var(--line);border-radius:var(--r);padding:18px;
+  display:flex;align-items:center;justify-content:center;min-height:420px
+}
+.stage svg{max-width:100%;height:auto;filter:drop-shadow(0 8px 22px rgba(46,43,39,.14))}
+.statline{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.fabbar{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--paper);
+  border-radius:10px;padding:6px 10px;cursor:pointer;text-align:left}
+.chip:hover{border-color:var(--sage);background:#F4F6F1}
+.chip .sw{width:26px;height:26px;border-radius:6px}
+.chip .tx b{display:block;font-size:12px;font-weight:600;line-height:1.2}
+.chip .tx small{color:var(--muted);font-size:10.5px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:7px 11px;min-width:96px}
+.stat b{display:block;font-size:15px;font-weight:600}
+.stat span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+/* block + slots */
+.blockprev{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px}
+.blockprev svg{display:block;width:100%;height:auto}
+.blockprev .patch{cursor:pointer}
+.blockprev .patch:hover{opacity:.78}
+.slotlist{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.slotrow{
+  display:flex;align-items:center;gap:9px;padding:6px;border:1px solid var(--line);
+  border-radius:9px;background:var(--paper);cursor:pointer;text-align:left;width:100%
+}
+.slotrow:hover{border-color:var(--sage)}
+.slotrow.hl{border-color:var(--clay);box-shadow:0 0 0 2px rgba(180,112,90,.15)}
+.sw{width:30px;height:30px;border-radius:7px;border:1px solid var(--line2);flex:0 0 auto;background-size:cover;background-position:center}
+.slotrow .nm{flex:1;min-width:0}
+.slotrow .nm b{display:block;font-size:12.5px;font-weight:600}
+.slotrow .nm small{color:var(--muted);font-size:11px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* stash */
+.stashgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:13px}
+.fab{background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden;box-shadow:var(--shadow)}
+.fab .im{aspect-ratio:1;background-size:cover;background-position:center;border-bottom:1px solid var(--line)}
+.fab .mt{padding:9px 10px}
+.fab .mt b{font-size:12.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fab .mt small{color:var(--muted);font-size:11px}
+.fab .acts{display:flex;gap:5px;padding:0 10px 10px}
+.drop{
+  border:2px dashed var(--line2);border-radius:11px;padding:26px;text-align:center;color:var(--muted);
+  background:var(--card);cursor:pointer
+}
+.drop.over{border-color:var(--sage);background:#F4F6F1;color:var(--sage-dk)}
+
+/* tables */
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.fabhead{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--paper)}
+.fabhead .sw{width:26px;height:26px}
+.fabhead b{font-size:13.5px}
+.fabhead .yd{margin-left:auto;font-size:12.5px;color:var(--muted)}
+.warn{color:var(--clay);font-weight:600}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(46,43,39,.34)}
+.modal.on{display:flex}
+.sheet{background:var(--card);border-radius:16px;max-width:900px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.22)}
+.sheet .hd{position:sticky;top:0;background:var(--card);padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;z-index:2}
+.sheet .bd{padding:18px}
+.pickgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
+.pick{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:8px;text-align:center}
+.pick:hover{border-color:var(--sage);background:#F6F8F4}
+.pick.on{border-color:var(--clay);box-shadow:0 0 0 2px rgba(180,112,90,.15)}
+.pick svg,.pick .im{width:100%;aspect-ratio:1;border-radius:6px;display:block;background-size:cover;background-position:center}
+.pick .cap{font-size:11.5px;margin-top:6px;line-height:1.25}
+.empty{text-align:center;color:var(--muted);padding:34px 10px;font-size:13px}
+.toast{
+  position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fff;padding:9px 16px;border-radius:10px;font-size:13px;
+  opacity:0;pointer-events:none;transition:.22s;z-index:90
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.seg{display:flex;gap:0;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--card);padding:6px 4px;font-size:12px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button.on{background:var(--sage);color:#fff}
+@media(max-width:620px){
+  .top-in{padding:8px 12px;gap:8px}
+  .brand{flex:1;min-width:0}
+  .brand h1{font-size:15px}
+  .top-in .spacer{display:none}
+  #btnProjects,#btnSave{order:2}
+  .tabs{order:3;width:100%}
+  .qname{order:4;width:100%}
+  .tabs button{flex:1;padding:6px 4px;font-size:12px}
+  main{padding:12px}
+  .stage{padding:10px;min-height:0}
+  .stashgrid{grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:10px}
+  .pickgrid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px}
+  .sheet{border-radius:14px;max-height:92vh}
+  .row2{grid-template-columns:1fr 1fr}
+}
+@media print{
+  header.top,.tabs,.noprint{display:none!important}
+  body{background:#fff}
+  .card{box-shadow:none;border-color:#ccc;break-inside:avoid}
+  main{padding:0;max-width:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+        <rect width="40" height="40" rx="9" fill="#7C8B6F"/>
+        <path d="M8 8h12v12H8z" fill="#FBF8F3" opacity=".92"/>
+        <path d="M20 20h12v12H20z" fill="#FBF8F3" opacity=".92"/>
+        <path d="M20 8h12v12z" fill="#B4705A"/>
+        <path d="M8 32V20h12z" fill="#C9A227"/>
+      </svg>
+      <div>
+        <h1>Piecework</h1>
+        <div class="sub">Quilt Planner</div>
+      </div>
+    </div>
+    <div class="tabs" id="tabs">
+      <button data-t="design" class="on">Design</button>
+      <button data-t="stash">Fabric Stash</button>
+      <button data-t="cut">Cutting List</button>
+    </div>
+    <div class="spacer"></div>
+    <input class="qname" id="qname" placeholder="Untitled quilt">
+    <button class="btn" id="btnProjects">My Quilts</button>
+    <button class="btn primary" id="btnSave">Save</button>
+  </div>
+</header>
+
+<main>
+  <!-- ================= DESIGN ================= -->
+  <section class="pane on" id="pane-design">
+    <div class="cols">
+
+      <!-- left: settings -->
+      <div class="stack">
+        <div class="card">
+          <div class="hd"><h3>Quilt Size</h3></div>
+          <div class="bd">
+            <label class="f"><span>Size</span><select id="qsize"></select></label>
+            <div class="row2" id="customWrap" style="display:none">
+              <label class="f"><span>Width (in)</span><input type="number" id="cw" value="60" min="12" step="1"></label>
+              <label class="f"><span>Length (in)</span><input type="number" id="ch" value="80" min="12" step="1"></label>
+            </div>
+            <label class="f"><span>Finished block size (in)</span>
+              <select id="bsize">
+                <option>4</option><option>6</option><option>8</option>
+                <option selected>12</option><option>14</option><option>16</option><option>18</option>
+              </select>
+            </label>
+            <div class="row2">
+              <label class="f"><span>Blocks across</span><input type="number" id="cols" min="1" max="30" value="5"></label>
+              <label class="f"><span>Blocks down</span><input type="number" id="rows" min="1" max="30" value="7"></label>
+            </div>
+            <button class="btn sm" id="btnFit" style="width:100%">Recalculate block count</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd"><h3>Sashing &amp; Borders</h3></div>
+          <div class="bd">
+            <label class="f"><span>Sashing between blocks (in)</span><input type="number" id="sash" value="0" min="0" max="6" step="0.5"></label>
+            <div class="row2">
+              <label class="f"><span>Inner border (in)</span><input type="number" id="b1" value="2" min="0" max="12" step="0.5"></label>
+              <label class="f"><span>Outer border (in)</span><input type="number" id="b2" value="5" min="0" max="16" step="0.5"></label>
+            </div>
+            <div class="slotlist" id="extraSlots"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd"><h3>Layout Set</h3></div>
+          <div class="bd">
+            <label class="f"><span>Block arrangement</span>
+              <select id="setting">
+                <option value="straight">Straight set</option>
+                <option value="alt">Alternate rotation</option>
+                <option value="rows">Turn by row (straight furrows)</option>
+                <option value="quad">Turn by quarter (barn raising)</option>
+                <option value="checker">Checkerboard with plain block</option>
+              </select>
+            </label>
+            <p class="hint">Turning blocks changes the secondary pattern without changing a single seam. Worth trying all five before you cut.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- center: quilt -->
+      <div class="stack">
+        <div class="stage" id="stage"></div>
+        <div class="statline" id="stats"></div>
+        <div class="card">
+          <div class="hd"><h3>Fabrics in this quilt</h3><div class="spacer"></div>
+            <span class="hint">Tap any one to change it</span></div>
+          <div class="bd"><div class="fabbar" id="fabbar"></div></div>
+        </div>
+      </div>
+
+      <!-- right: block -->
+      <div class="stack">
+        <div class="card">
+          <div class="hd">
+            <h3>Block &amp; Fabrics</h3>
+            <div class="spacer"></div>
+            <button class="btn sm" id="btnBlocks">Change block</button>
+          </div>
+          <div class="bd">
+            <div style="margin-bottom:8px"><b id="blockName">Nine Patch</b>
+              <div class="hint" id="blockNote"></div></div>
+            <div class="blockprev" id="blockPrev"></div>
+            <p class="hint" style="margin:10px 0 0">Tap any patch in the block, or a row below, to choose the fabric for it.</p>
+            <div class="slotlist" id="slots"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="hd"><h3>Quick Stash</h3></div>
+          <div class="bd">
+            <div class="pickgrid" id="miniStash"></div>
+            <button class="btn sm" style="width:100%;margin-top:10px" id="btnGoStash">Open fabric stash</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= STASH ================= -->
+  <section class="pane" id="pane-stash">
+    <div class="stack" style="max-width:1100px;margin:0 auto">
+      <div class="card">
+        <div class="hd"><h3>Add Fabric</h3></div>
+        <div class="bd">
+          <div class="row2" style="grid-template-columns:2fr 1fr;gap:14px">
+            <div class="drop" id="drop">
+              <b>Upload fabric photos</b>
+              <div class="hint" style="margin-top:5px">Drop images here or click to browse. Photograph a flat piece in good light for the truest colour.</div>
+            </div>
+            <div>
+              <label class="f"><span>Or add a solid</span><input type="color" id="solidColor" value="#7C8B6F" style="width:100%;height:38px;padding:2px;border:1px solid var(--line2);border-radius:8px;background:var(--paper)"></label>
+              <button class="btn sm" style="width:100%" id="btnSolid">Add solid colour</button>
+            </div>
+          </div>
+          <input type="file" id="file" accept="image/*" multiple hidden>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><h3>My Stash</h3><div class="spacer"></div><span class="hint" id="stashCount"></span>
+          <button class="btn sm" id="btnStarters">Add starter fabrics</button>
+          <button class="btn sm" id="btnNoStarters">Remove starters</button></div>
+        <div class="bd"><div class="stashgrid" id="stashGrid"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CUTTING ================= -->
+  <section class="pane" id="pane-cut">
+    <div class="stack" style="max-width:1000px;margin:0 auto">
+      <div class="card">
+        <div class="hd"><h3>Cutting List</h3><div class="spacer"></div>
+          <span class="hint noprint">Assumes 42in usable width, 1/4in seams, 15 percent added for safety.</span>
+          <button class="btn sm noprint" id="btnPrint">Print</button></div>
+        <div class="bd" id="cutBody"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal"><div class="sheet"><div class="hd"><h3 id="mTitle">Choose</h3><div class="spacer"></div><button class="btn sm" id="mClose">Close</button></div><div class="bd" id="mBody"></div></div></div>
+<div class="toast" id="toast"></div>
+<script>
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
+  });
+}
+</script>
+<script>
+/* ============================================================
+   Piecework - quilt planner
+   All data stays in this browser (localStorage).
+   ============================================================ */
+(function(){
+"use strict";
+
+/* ---------- tiny helpers ---------- */
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+function el(t,a,kids){var e=document.createElement(t);if(a)for(var k in a){if(k==='class')e.className=a[k];else if(k==='html')e.innerHTML=a[k];else if(k==='text')e.textContent=a[k];else if(k.slice(0,2)==='on')e[k]=a[k];else e.setAttribute(k,a[k]);}
+ if(kids)kids.forEach(function(c){if(c)e.appendChild(c);});return e;}
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('on');},1900);}
+function up8(x){return Math.ceil(x*8-1e-9)/8;}
+function frac(x){
+  x=Math.round(x*8)/8;
+  var w=Math.floor(x+1e-9), e=Math.round((x-w)*8);
+  var m={1:'1/8',2:'1/4',3:'3/8',4:'1/2',5:'5/8',6:'3/4',7:'7/8'};
+  if(e===0)return String(w);
+  return (w?w+' ':'')+m[e];
+}
+function inch(x){return frac(x)+'"';}
+
+/* ============================================================
+   1. BLOCK LIBRARY  (traditional, public domain patterns)
+   ============================================================ */
+function P(slot,pts,cut){return {slot:slot,pts:pts,cut:cut};}
+function sq(c,r,slot,w,h){w=w||1;h=h||1;return [P(slot,[[c,r],[c+w,r],[c+w,r+h],[c,r+h]],{t:'rect',w:w,h:h})];}
+function hst(c,r,a,b,dir){
+  var TL=[c,r],TR=[c+1,r],BR=[c+1,r+1],BL=[c,r+1],pa,pb;
+  if(dir==='nw'){pa=[TL,TR,BL];pb=[TR,BR,BL];}
+  else if(dir==='se'){pa=[TR,BR,BL];pb=[TL,TR,BL];}
+  else if(dir==='ne'){pa=[TL,TR,BR];pb=[TL,BR,BL];}
+  else {pa=[TL,BR,BL];pb=[TL,TR,BR];}
+  return [P(a,pa,{t:'hst',s:1}),P(b,pb,{t:'hst',s:1})];
+}
+function qst(c,r,s){ /* s = [north,east,south,west] */
+  var TL=[c,r],TR=[c+1,r],BR=[c+1,r+1],BL=[c,r+1],C=[c+0.5,r+0.5];
+  return [P(s[0],[TL,TR,C],{t:'qst',s:1}),P(s[1],[TR,BR,C],{t:'qst',s:1}),
+          P(s[2],[BR,BL,C],{t:'qst',s:1}),P(s[3],[BL,TL,C],{t:'qst',s:1})];
+}
+/* flying geese: goose points in `dir`; w,h in units */
+function geese(c,r,w,h,dir,g,bg){
+  var x0=c,y0=r,x1=c+w,y1=r+h,mx=(x0+x1)/2,my=(y0+y1)/2,gp,b1,b2,corner;
+  if(dir==='up'){gp=[[x0,y1],[mx,y0],[x1,y1]];b1=[[x0,y0],[mx,y0],[x0,y1]];b2=[[mx,y0],[x1,y0],[x1,y1]];corner=h;}
+  else if(dir==='down'){gp=[[x0,y0],[x1,y0],[mx,y1]];b1=[[x0,y0],[mx,y1],[x0,y1]];b2=[[x1,y0],[x1,y1],[mx,y1]];corner=h;}
+  else if(dir==='left'){gp=[[x1,y0],[x0,my],[x1,y1]];b1=[[x0,y0],[x1,y0],[x0,my]];b2=[[x0,my],[x1,y1],[x0,y1]];corner=w;}
+  else {gp=[[x0,y0],[x1,my],[x0,y1]];b1=[[x0,y0],[x1,y0],[x1,my]];b2=[[x1,my],[x1,y1],[x0,y1]];corner=w;}
+  return [P(g,gp,{t:'rect',w:w,h:h}),
+          P(bg,b1,{t:'rect',w:corner,h:corner}),
+          P(bg,b2,{t:'rect',w:corner,h:corner})];
+}
+function snowball(g,main,corner,cs){
+  var o=[P(main,[[cs,0],[g-cs,0],[g,cs],[g,g-cs],[g-cs,g],[cs,g],[0,g-cs],[0,cs]],{t:'rect',w:g,h:g})];
+  o.push(P(corner,[[0,0],[cs,0],[0,cs]],{t:'rect',w:cs,h:cs}));
+  o.push(P(corner,[[g,0],[g,cs],[g-cs,0]],{t:'rect',w:cs,h:cs}));
+  o.push(P(corner,[[g,g],[g-cs,g],[g,g-cs]],{t:'rect',w:cs,h:cs}));
+  o.push(P(corner,[[0,g],[0,g-cs],[cs,g]],{t:'rect',w:cs,h:cs}));
+  return o;
+}
+function cat(){var o=[];for(var i=0;i<arguments.length;i++)o=o.concat(arguments[i]);return o;}
+
+var BG='Background', A='Main', B='Accent', C='Second accent';
+
+function ninePatchPts(x,y,size,s1,s2){
+  var u=size/3,o=[];
+  for(var r=0;r<3;r++)for(var c=0;c<3;c++){
+    var s=((r+c)%2===0)?s1:s2;
+    o=o.concat(sq(x+c*u,y+r*u,s,u,u));
+  }
+  return o;
+}
+
+var BLOCKS=[
+ {id:'plain',name:'Plain Square',grid:1,slots:[A],note:'A single square. Useful as the alternate block in a chain quilt.',
+  make:function(){return sq(0,0,A);}},
+
+ {id:'hst',name:'Half Square Triangle',grid:1,slots:[A,BG],note:'The workhorse of quilting. Two triangles, endless settings.',
+  make:function(){return hst(0,0,A,BG,'sw');}},
+
+ {id:'hourglass',name:'Hourglass',grid:1,slots:[A,BG],note:'Also called a quarter square triangle unit.',
+  make:function(){return qst(0,0,[A,BG,A,BG]);}},
+
+ {id:'fourpatch',name:'Four Patch',grid:2,slots:[A,BG],note:'The first block most quilters ever piece.',
+  make:function(){return cat(sq(0,0,A),sq(1,0,BG),sq(0,1,BG),sq(1,1,A));}},
+
+ {id:'pinwheel',name:'Pinwheel',grid:2,slots:[A,BG],note:'Four half square triangles that spin.',
+  make:function(){return cat(hst(0,0,A,BG,'ne'),hst(1,0,A,BG,'se'),hst(1,1,A,BG,'sw'),hst(0,1,A,BG,'nw'));}},
+
+ {id:'brokendishes',name:'Broken Dishes',grid:2,slots:[A,BG],note:'Four triangles meeting in the middle.',
+  make:function(){return cat(hst(0,0,A,BG,'se'),hst(1,0,A,BG,'sw'),hst(0,1,A,BG,'ne'),hst(1,1,A,BG,'nw'));}},
+
+ {id:'bowtie',name:'Bow Tie',grid:2,slots:[A,BG],note:'A charming scrap block. Two squares and two corner triangles.',
+  make:function(){return cat(sq(0,0,A),sq(1,1,A),hst(1,0,A,BG,'sw'),hst(0,1,A,BG,'ne'));}},
+
+ {id:'ninepatch',name:'Nine Patch',grid:3,slots:[A,BG],note:'Nine squares, five dark and four light. The classic.',
+  make:function(){var o=[];for(var r=0;r<3;r++)for(var c=0;c<3;c++)o=o.concat(sq(c,r,((r+c)%2===0)?A:BG));return o;}},
+
+ {id:'doublenine',name:'Double Nine Patch',grid:3,slots:[A,BG],note:'Five of the nine squares are themselves tiny nine patches.',
+  make:function(){var o=[];for(var r=0;r<3;r++)for(var c=0;c<3;c++){
+    if((r+c)%2===0)o=o.concat(ninePatchPts(c,r,1,A,BG)); else o=o.concat(sq(c,r,BG));}
+    return o;}},
+
+ {id:'shoofly',name:'Shoofly',grid:3,slots:[A,BG],note:'Nine patch with triangle corners.',
+  make:function(){return cat(hst(0,0,A,BG,'nw'),sq(1,0,BG),hst(2,0,A,BG,'ne'),
+    sq(0,1,BG),sq(1,1,A),sq(2,1,BG),
+    hst(0,2,A,BG,'sw'),sq(1,2,BG),hst(2,2,A,BG,'se'));}},
+
+ {id:'friendship',name:'Friendship Star',grid:3,slots:[A,BG],note:'A star with a gentle turn to it.',
+  make:function(){return cat(sq(0,0,BG),hst(1,0,A,BG,'sw'),sq(2,0,BG),
+    hst(0,1,A,BG,'se'),sq(1,1,A),hst(2,1,A,BG,'nw'),
+    sq(0,2,BG),hst(1,2,A,BG,'ne'),sq(2,2,BG));}},
+
+ {id:'ohiostar',name:'Ohio Star',grid:3,slots:[A,B,BG],note:'Quarter square triangle points. Try two fabrics in the points.',
+  make:function(){return cat(sq(0,0,BG),qst(1,0,[B,BG,A,BG]),sq(2,0,BG),
+    qst(0,1,[BG,A,BG,B]),sq(1,1,A),qst(2,1,[BG,B,BG,A]),
+    sq(0,2,BG),qst(1,2,[A,BG,B,BG]),sq(2,2,BG));}},
+
+ {id:'churndash',name:'Churn Dash',grid:3,slots:[A,BG],note:'Also called Monkey Wrench or Hole in the Barn Door.',
+  make:function(){return cat(hst(0,0,A,BG,'nw'),sq(1,0,A,1,0.5),sq(1,0.5,BG,1,0.5),hst(2,0,A,BG,'ne'),
+    sq(0,1,A,0.5,1),sq(0.5,1,BG,0.5,1),sq(1,1,BG),sq(2.5,1,A,0.5,1),sq(2,1,BG,0.5,1),
+    hst(0,2,A,BG,'sw'),sq(1,2.5,A,1,0.5),sq(1,2,BG,1,0.5),hst(2,2,A,BG,'se'));}},
+
+ {id:'snowball',name:'Snowball',grid:3,slots:[A,BG],note:'Pairs beautifully with a Nine Patch in a checkerboard set.',
+  make:function(){return snowball(3,A,BG,1);}},
+
+ {id:'mapleleaf',name:'Maple Leaf',grid:3,slots:[A,B,BG],note:'Leaf, stem and background. Lovely for autumn quilts.',
+  make:function(){return cat(sq(0,0,A),sq(1,0,A),hst(2,0,A,BG,'sw'),
+    sq(0,1,A),sq(1,1,A),sq(2,1,A),
+    [P(BG,[[0,2],[0.7,2],[0,3]],{t:'hst',s:1}),
+     P(B,[[0,3],[0.7,2],[1,2],[0.3,3]],{t:'rect',w:0.6,h:1.5}),
+     P(BG,[[0.3,3],[1,2],[1,3]],{t:'hst',s:1})],
+    sq(1,2,A),sq(2,2,BG));}},
+
+ {id:'sawtooth',name:'Sawtooth Star',grid:4,slots:[A,B,BG],note:'The star everyone knows. Four flying geese around a centre.',
+  make:function(){return cat(sq(0,0,BG),geese(1,0,2,1,'up',B,BG),sq(3,0,BG),
+    geese(0,1,1,2,'left',B,BG),sq(1,1,A,2,2),geese(3,1,1,2,'right',B,BG),
+    sq(0,3,BG),geese(1,3,2,1,'down',B,BG),sq(3,3,BG));}},
+
+ {id:'dutchman',name:"Dutchman's Puzzle",grid:4,slots:[A,B,BG],note:'Eight flying geese chasing each other around.',
+  make:function(){return cat(
+    geese(0,0,2,1,'up',A,BG),geese(0,1,2,1,'up',B,BG),
+    geese(2,0,1,2,'right',A,BG),geese(3,0,1,2,'right',B,BG),
+    geese(2,2,2,1,'down',A,BG),geese(2,3,2,1,'down',B,BG),
+    geese(1,2,1,2,'left',A,BG),geese(0,2,1,2,'left',B,BG));}},
+
+ {id:'flyinggeese',name:'Flying Geese',grid:4,slots:[A,B,BG],note:'Four rows of geese. Alternate the two fabrics as you like.',
+  make:function(){var o=[],r;for(r=0;r<4;r++){o=o.concat(geese(0,r,2,1,'up',(r%2?B:A),BG));
+    o=o.concat(geese(2,r,2,1,'up',(r%2?A:B),BG));}return o;}},
+
+ {id:'railfence',name:'Rail Fence',grid:4,slots:[A,B,C,BG],note:'Four strips. Turn every other block for the woven look.',
+  make:function(){return cat(sq(0,0,A,4,1),sq(0,1,B,4,1),sq(0,2,C,4,1),sq(0,3,BG,4,1));}},
+
+ {id:'logcabin',name:'Log Cabin',grid:7,slots:['Centre','Light','Dark'],note:'A red centre for the hearth. Light on two sides, dark on the other two.',
+  make:function(){
+    var o=sq(3,3,'Centre'),x0=3,y0=3,x1=4,y1=4,i,side,slot;
+    for(i=1;i<=12;i++){
+      side=(i-1)%4; slot=(side<2)?'Light':'Dark';
+      if(side===0){o=o.concat(sq(x0,y0-1,slot,x1-x0,1));y0-=1;}
+      else if(side===1){o=o.concat(sq(x1,y0,slot,1,y1-y0));x1+=1;}
+      else if(side===2){o=o.concat(sq(x0,y1,slot,x1-x0,1));y1+=1;}
+      else {o=o.concat(sq(x0-1,y0,slot,1,y1-y0));x0-=1;}
+    }
+    return o;}}
+];
+BLOCKS.forEach(function(b){b.patches=b.make();});
+var ALT={id:'alt',name:'Plain alternate',grid:1,slots:[BG],note:'',patches:sq(0,0,BG)};
+function blockById(id){for(var i=0;i<BLOCKS.length;i++)if(BLOCKS[i].id===id)return BLOCKS[i];return BLOCKS[7];}
+
+
+/* ============================================================
+   1b. STARTER FABRICS  (generated, not photos)
+   ============================================================ */
+function svgURI(sv){return 'data:image/svg+xml,'+encodeURIComponent(sv);}
+function dotTile(hex){
+  return svgURI('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">'+
+   '<rect width="60" height="60" fill="'+hex+'"/>'+
+   '<g fill="#ffffff"><circle cx="15" cy="15" r="6"/><circle cx="45" cy="15" r="6"/>'+
+   '<circle cx="0" cy="45" r="6"/><circle cx="30" cy="45" r="6"/><circle cx="60" cy="45" r="6"/></g></svg>');
+}
+function ginghamTile(hex){
+  return svgURI('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">'+
+   '<rect width="40" height="40" fill="#ffffff"/>'+
+   '<rect x="0" y="0" width="20" height="40" fill="'+hex+'" opacity="0.45"/>'+
+   '<rect x="0" y="0" width="40" height="20" fill="'+hex+'" opacity="0.45"/></svg>');
+}
+var SOLIDS=[
+ ['White','#FFFFFF'],['Cream','#F6EFE0'],['Natural','#E7DCC8'],['Tan','#C9AE86'],
+ ['Light grey','#CFCCC6'],['Grey','#8E8B85'],['Charcoal','#4A4A48'],['Black','#1E1D1C'],
+ ['Red','#C03B32'],['Barn red','#8E2B25'],['Coral','#E4715C'],['Orange','#E08A3C'],
+ ['Mustard','#D2A32B'],['Yellow','#F0CE4E'],['Chartreuse','#A8B84A'],['Sage','#8B9B7A'],
+ ['Green','#5C8A57'],['Forest','#33553C'],['Teal','#2F7B7B'],['Aqua','#7FC0C0'],
+ ['Light blue','#9CBCD8'],['Blue','#3F6EA8'],['Navy','#253B5C'],['Periwinkle','#8E9BD1'],
+ ['Lavender','#B9A5CE'],['Purple','#6B4A8C'],['Plum','#7A3F5C'],['Pink','#E9A8B8'],
+ ['Rose','#C96F86'],['Brown','#7A5A42']
+];
+var DOTS=[['Red','#C03B32'],['Navy','#253B5C'],['Pink','#E9A8B8'],['Sage','#8B9B7A'],
+ ['Mustard','#D2A32B'],['Teal','#2F7B7B'],['Black','#1E1D1C']];
+var GINGHAMS=[['Red','#C03B32'],['Navy','#253B5C'],['Pink','#E9A8B8'],['Sage','#8B9B7A'],
+ ['Yellow','#F0CE4E'],['Black','#1E1D1C']];
+function starterFabrics(){
+  var o=[];
+  SOLIDS.forEach(function(c){o.push({id:'st_s_'+c[0].replace(/\s/g,''),type:'solid',starter:1,
+    name:c[0]+' solid',color:c[1],yards:''});});
+  DOTS.forEach(function(c){o.push({id:'st_d_'+c[0].replace(/\s/g,''),type:'photo',starter:1,tile:1,
+    name:c[0]+' polka dot',img:dotTile(c[1]),scale:3,yards:''});});
+  GINGHAMS.forEach(function(c){o.push({id:'st_g_'+c[0].replace(/\s/g,''),type:'photo',starter:1,tile:1,
+    name:c[0]+' gingham',img:ginghamTile(c[1]),scale:2,yards:''});});
+  return o;
+}
+function addStarters(){
+  var have={};stash.forEach(function(f){have[f.id]=1;});
+  var n=0;
+  starterFabrics().forEach(function(f){if(!have[f.id]){stash.push(f);n++;}});
+  saveStash();afterChange();
+  toast(n?('Added '+n+' starter fabric'+(n===1?'':'s')):'Starter fabrics are already in your stash');
+}
+function removeStarters(){
+  if(!confirm('Remove all the built in starter fabrics? Photos you uploaded yourself will stay.'))return;
+  stash=stash.filter(function(f){return !f.starter;});
+  Object.keys(state.fabrics).forEach(function(k){if(!fabById(state.fabrics[k]))delete state.fabrics[k];});
+  saveStash();afterChange();toast('Starter fabrics removed');
+}
+
+/* ============================================================
+   2. QUILT SIZES
+   ============================================================ */
+var SIZES=[
+ {id:'wall',n:'Wall hanging',w:40,h:40},
+ {id:'crib',n:'Crib / baby',w:36,h:52},
+ {id:'throw',n:'Throw / lap',w:50,h:65},
+ {id:'twin',n:'Twin',w:70,h:90},
+ {id:'twinxl',n:'Twin XL',w:70,h:95},
+ {id:'full',n:'Full / double',w:85,h:108},
+ {id:'queen',n:'Queen',w:90,h:108},
+ {id:'king',n:'King',w:108,h:108},
+ {id:'calking',n:'California king',w:104,h:112},
+ {id:'custom',n:'Custom size',w:60,h:80}
+];
+function sizeById(id){for(var i=0;i<SIZES.length;i++)if(SIZES[i].id===id)return SIZES[i];return SIZES[2];}
+
+/* ============================================================
+   3. STATE + STORAGE
+   ============================================================ */
+var K={stash:'pw.stash.v1',projects:'pw.projects.v1',cur:'pw.current.v1',seeded:'pw.seeded.v1'};
+var stash=[],projects=[],state=null;
+
+function newState(){
+  return {id:'q'+Date.now(),name:'',size:'throw',cw:60,ch:80,block:'ninepatch',bsize:12,
+    cols:5,rows:7,sash:0,b1:2,b2:5,set:'straight',fabrics:{},saved:0};
+}
+function load(){
+  try{stash=JSON.parse(localStorage.getItem(K.stash)||'[]');}catch(e){stash=[];}
+  try{projects=JSON.parse(localStorage.getItem(K.projects)||'[]');}catch(e){projects=[];}
+  var c=null;try{c=JSON.parse(localStorage.getItem(K.cur)||'null');}catch(e){}
+  state=c||newState();
+  if(!localStorage.getItem(K.seeded)){
+    var have={};stash.forEach(function(f){have[f.id]=1;});
+    starterFabrics().forEach(function(f){if(!have[f.id])stash.push(f);});
+    try{localStorage.setItem(K.seeded,'1');}catch(e){}
+    saveStash();
+  }
+}
+function saveStash(){try{localStorage.setItem(K.stash,JSON.stringify(stash));}catch(e){toast('Browser storage is full. Remove a few fabrics.');}}
+function saveCur(){try{localStorage.setItem(K.cur,JSON.stringify(state));}catch(e){}}
+function saveProject(){
+  state.name=$('#qname').value.trim()||'Untitled quilt';
+  state.saved=Date.now();
+  var i=-1;projects.forEach(function(p,k){if(p.id===state.id)i=k;});
+  if(i>=0)projects[i]=JSON.parse(JSON.stringify(state)); else projects.unshift(JSON.parse(JSON.stringify(state)));
+  try{localStorage.setItem(K.projects,JSON.stringify(projects));toast('Saved "'+state.name+'"');}
+  catch(e){toast('Could not save. Browser storage is full.');}
+  saveCur();
+}
+function fabById(id){for(var i=0;i<stash.length;i++)if(stash[i].id===id)return stash[i];return null;}
+
+/* ============================================================
+   4. FABRIC RENDERING
+   ============================================================ */
+var PLACE=['#B9C1AE','#E8E1D4','#C08A74','#D9C48A','#8FA0A8','#CFC0CC'];
+function slotFallback(block,slot){
+  var i=block.slots.indexOf(slot);
+  if(slot===BG)return '#F2ECE1';
+  return PLACE[(i<0?0:i)%PLACE.length];
+}
+function fillFor(block,slot,defs,seen){
+  var f=fabById(state.fabrics[slot]);
+  if(!f)return slotFallback(block,slot);
+  if(f.type==='solid')return f.color;
+  var pid='fab_'+f.id;
+  if(!seen[pid]){
+    seen[pid]=1;
+    var ts=f.scale||6;
+    defs.push('<pattern id="'+pid+'" patternUnits="userSpaceOnUse" width="'+ts+'" height="'+ts+'">'+
+      '<image href="'+f.img+'" x="0" y="0" width="'+ts+'" height="'+ts+'" preserveAspectRatio="xMidYMid slice"/></pattern>');
+  }
+  return 'url(#'+pid+')';
+}
+function swatchStyle(f){
+  if(!f)return 'background:repeating-linear-gradient(45deg,#EFE9DF 0 5px,#E3DCD1 5px 10px)';
+  if(f.type==='solid')return 'background:'+f.color;
+  if(f.tile)return 'background-image:url("'+f.img+'");background-size:25% 25%;background-repeat:repeat';
+  return 'background-image:url('+f.img+')';
+}
+
+/* ============================================================
+   5. GEOMETRY
+   ============================================================ */
+function layout(){
+  var s=$('#qsize').value==='custom'?{w:+state.cw,h:+state.ch}:sizeById(state.size);
+  var B=+state.bsize,sa=+state.sash,b1=+state.b1,b2=+state.b2;
+  var cols=Math.max(1,Math.min(30,Math.round(state.cols))),rows=Math.max(1,Math.min(30,Math.round(state.rows)));
+  var cw=cols*B+(cols-1)*sa, chh=rows*B+(rows-1)*sa;
+  return {target:s,B:B,sash:sa,b1:b1,b2:b2,cols:cols,rows:rows,
+    centerW:cw,centerH:chh,W:cw+2*(b1+b2),H:chh+2*(b1+b2)};
+}
+function fitBlocks(){
+  var s=$('#qsize').value==='custom'?{w:+state.cw,h:+state.ch}:sizeById(state.size);
+  var B=+state.bsize,sa=+state.sash,pad=2*((+state.b1)+(+state.b2));
+  state.cols=Math.max(1,Math.round((s.w-pad+sa)/(B+sa)));
+  state.rows=Math.max(1,Math.round((s.h-pad+sa)/(B+sa)));
+  $('#cols').value=state.cols;$('#rows').value=state.rows;
+}
+function rotFor(r,c,L){
+  switch(state.set){
+    case 'alt': return ((r+c)%2)?90:0;
+    case 'rows': return (r%2)?90:0;
+    case 'quad': {
+      var mr=L.rows/2,mc=L.cols/2;
+      if(r<mr&&c<mc)return 0; if(r<mr)return 90; if(c>=mc)return 180; return 270;
+    }
+    default: return 0;
+  }
+}
+
+/* ============================================================
+   6. SVG DRAWING
+   ============================================================ */
+function pathOf(pts,u){
+  var d='';
+  for(var i=0;i<pts.length;i++)d+=(i?'L':'M')+(pts[i][0]*u).toFixed(3)+' '+(pts[i][1]*u).toFixed(3);
+  return d+'Z';
+}
+function blockGroup(block,size,defs,seen,interactive){
+  var u=size/block.grid,out='',sw=(size/200).toFixed(3);
+  block.patches.forEach(function(p,i){
+    out+='<path class="patch" data-slot="'+p.slot+'" d="'+pathOf(p.pts,u)+'" fill="'+fillFor(block,p.slot,defs,seen)+
+      '" stroke="rgba(46,43,39,.18)" stroke-width="'+sw+'"'+(interactive?' style="cursor:pointer"':'')+'/>';
+  });
+  return out;
+}
+function drawBlockPreview(){
+  var block=blockById(state.block),defs=[],seen={},size=100;
+  var inner=blockGroup(block,size,defs,seen,true);
+  $('#blockPrev').innerHTML='<svg viewBox="-1 -1 '+(size+2)+' '+(size+2)+'"><defs>'+defs.join('')+'</defs>'+inner+'</svg>';
+  $$('#blockPrev .patch').forEach(function(p){
+    p.onclick=function(){openFabricPicker(p.getAttribute('data-slot'));};
+  });
+}
+function drawQuilt(){
+  var L=layout(),block=blockById(state.block),plain=ALT;
+  var defs=[],seen={},body='';
+  var bgFill=fillFor(block,BG,defs,seen);
+  var bd1=fillFor({slots:[],grid:1},'Inner border',defs,seen);
+  var bd2=fillFor({slots:[],grid:1},'Outer border',defs,seen);
+  var sashF=fillFor({slots:[],grid:1},'Sashing',defs,seen);
+
+  /* borders */
+  if(L.b2>0)body+='<rect x="0" y="0" width="'+L.W+'" height="'+L.H+'" fill="'+bd2+'"/>';
+  if(L.b1>0)body+='<rect x="'+L.b2+'" y="'+L.b2+'" width="'+(L.W-2*L.b2)+'" height="'+(L.H-2*L.b2)+'" fill="'+bd1+'"/>';
+  var ox=L.b1+L.b2,oy=L.b1+L.b2;
+  /* sashing field */
+  if(L.sash>0)body+='<rect x="'+ox+'" y="'+oy+'" width="'+L.centerW+'" height="'+L.centerH+'" fill="'+sashF+'"/>';
+
+  var mainG=blockGroup(block,L.B,defs,seen,false);
+  var plainG=blockGroup(plain,L.B,defs,seen,false);
+  body+='<defs><g id="blkMain">'+mainG+'</g><g id="blkPlain">'+plainG+'</g></defs>';
+
+  for(var r=0;r<L.rows;r++)for(var c=0;c<L.cols;c++){
+    var x=ox+c*(L.B+L.sash), y=oy+r*(L.B+L.sash);
+    var usePlain=(state.set==='checker'&&((r+c)%2===1));
+    var rot=usePlain?0:rotFor(r,c,L);
+    var tr='translate('+x.toFixed(3)+' '+y.toFixed(3)+')';
+    if(rot)tr+=' rotate('+rot+' '+(L.B/2)+' '+(L.B/2)+')';
+    body+='<use href="#'+(usePlain?'blkPlain':'blkMain')+'" transform="'+tr+'"/>';
+  }
+  /* outline */
+  body+='<rect x="0" y="0" width="'+L.W+'" height="'+L.H+'" fill="none" stroke="rgba(46,43,39,.35)" stroke-width="'+(L.W/400)+'"/>';
+
+  var availW=Math.min(780, window.innerWidth-470);
+  if(availW<340)availW=Math.max(240,Math.min(620,window.innerWidth-70));
+  var availH=Math.max(300, window.innerHeight-(window.innerWidth<1180?350:230));
+  var k=Math.min(availW/L.W, availH/L.H);
+  var pw=Math.round(L.W*k), ph=Math.round(L.H*k);
+  $('#stage').innerHTML='<svg width="'+pw+'" height="'+ph+'" viewBox="0 0 '+L.W+' '+L.H+'"><defs>'+defs.join('')+'</defs>'+body+'</svg>';
+
+  var tgt=L.target;
+  $('#stats').innerHTML=
+    stat(frac(L.W)+' x '+frac(L.H)+'"','Finished size')+
+    stat(L.cols+' x '+L.rows,'Blocks')+
+    stat(String(L.cols*L.rows),'Total blocks')+
+    stat(frac(tgt.w)+' x '+frac(tgt.h)+'"','Target '+(sizeById(state.size).n||''))+
+    stat(frac(L.B)+'"','Block size');
+}
+function stat(v,l){return '<div class="stat"><b>'+v+'</b><span>'+l+'</span></div>';}
+
+/* ============================================================
+   7. SLOT LIST
+   ============================================================ */
+function extraSlots(){
+  var L=layout(),o=[];
+  if(L.sash>0)o.push('Sashing');
+  if(L.b1>0)o.push('Inner border');
+  if(L.b2>0)o.push('Outer border');
+  o.push('Binding');
+  o.push('Backing');
+  return o;
+}
+function slotRow(slot,hl){
+  var f=fabById(state.fabrics[slot]);
+  var b=el('button',{class:'slotrow'+(hl?' hl':''),onclick:function(){openFabricPicker(slot);}});
+  b.appendChild(el('div',{class:'sw',style:swatchStyle(f)}));
+  var nm=el('div',{class:'nm'});
+  nm.appendChild(el('b',{text:slot}));
+  nm.appendChild(el('small',{text:f?f.name:'Tap to choose fabric'}));
+  b.appendChild(nm);
+  return b;
+}
+function drawSlots(){
+  var block=blockById(state.block),wrap=$('#slots');
+  wrap.innerHTML='';
+  block.slots.forEach(function(s){wrap.appendChild(slotRow(s));});
+  var ex=$('#extraSlots');ex.innerHTML='';
+  extraSlots().forEach(function(s){ex.appendChild(slotRow(s));});
+  $('#blockName').textContent=block.name;
+  $('#blockNote').textContent=block.note;
+  /* fabric bar under the quilt */
+  var bar=$('#fabbar');bar.innerHTML='';
+  block.slots.concat(extraSlots()).forEach(function(s){
+    var f=fabById(state.fabrics[s]);
+    var chip=el('button',{class:'chip',onclick:function(){openFabricPicker(s);}});
+    chip.appendChild(el('div',{class:'sw',style:swatchStyle(f)}));
+    var tx=el('div',{class:'tx'});
+    tx.appendChild(el('b',{text:s}));
+    tx.appendChild(el('small',{text:f?f.name:'not chosen yet'}));
+    chip.appendChild(tx);
+    bar.appendChild(chip);
+  });
+  /* mini stash */
+  var m=$('#miniStash');m.innerHTML='';
+  if(!stash.length){m.innerHTML='<div class="empty" style="grid-column:1/-1;padding:14px">No fabrics yet.</div>';}
+  stash.slice(0,6).forEach(function(f){
+    m.appendChild(el('div',{class:'pick'},[el('div',{class:'im',style:swatchStyle(f)}),el('div',{class:'cap',text:f.name})]));
+  });
+}
+
+/* ============================================================
+   8. MODALS
+   ============================================================ */
+function openModal(title,build){
+  $('#mTitle').textContent=title;
+  var b=$('#mBody');b.innerHTML='';build(b);
+  $('#modal').classList.add('on');
+}
+function closeModal(){$('#modal').classList.remove('on');}
+$('#mClose').onclick=closeModal;
+$('#modal').onclick=function(e){if(e.target===$('#modal'))closeModal();};
+
+function openFabricPicker(slot){
+  openModal('Fabric for: '+slot,function(b){
+    if(!stash.length){
+      b.appendChild(el('div',{class:'empty',html:'Your stash is empty. Add fabric photos in the Fabric Stash tab first.'}));
+      return;
+    }
+    var find=el('input',{type:'text',placeholder:'Search your stash, for example navy, gingham, dot',
+      style:'margin-bottom:14px'});
+    b.appendChild(find);
+    var g=el('div',{class:'pickgrid'});
+    b.appendChild(g);
+    function paint(){
+      var q=find.value.trim().toLowerCase();
+      g.innerHTML='';
+      g.appendChild(el('button',{class:'pick',onclick:function(){delete state.fabrics[slot];afterChange();closeModal();}},
+        [el('div',{class:'im',style:'background:repeating-linear-gradient(45deg,#EFE9DF 0 6px,#E3DCD1 6px 12px)'}),
+         el('div',{class:'cap',text:'Clear'})]));
+      var shown=0;
+      stash.forEach(function(f){
+        if(q&&f.name.toLowerCase().indexOf(q)<0)return;
+        shown++;
+        var on=state.fabrics[slot]===f.id;
+        g.appendChild(el('button',{class:'pick'+(on?' on':''),onclick:function(){state.fabrics[slot]=f.id;afterChange();closeModal();}},
+          [el('div',{class:'im',style:swatchStyle(f)}),el('div',{class:'cap',text:f.name})]));
+      });
+      if(!shown&&q)g.appendChild(el('div',{class:'empty',style:'grid-column:1/-1',text:'Nothing in your stash matches "'+find.value+'".'}));
+    }
+    find.oninput=paint; paint(); setTimeout(function(){find.focus();},60);
+  });
+}
+function openBlockPicker(){
+  openModal('Choose a block',function(b){
+    var g=el('div',{class:'pickgrid'});
+    BLOCKS.forEach(function(bl){
+      var defs=[],seen={};
+      var svg='<svg viewBox="0 0 100 100">'+blockGroup(bl,100,defs,seen,false)+'</svg>';
+      var on=state.block===bl.id;
+      var btn=el('button',{class:'pick'+(on?' on':''),onclick:function(){
+        state.block=bl.id;afterChange();closeModal();}});
+      btn.innerHTML=svg+'<div class="cap">'+bl.name+'</div>';
+      g.appendChild(btn);
+    });
+    b.appendChild(g);
+  });
+}
+function openProjects(){
+  openModal('My Quilts',function(b){
+    var bar=el('div',{style:'display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap'});
+    bar.appendChild(el('button',{class:'btn sm',text:'Start a new quilt',onclick:function(){
+      state=newState();applyState();afterChange();closeModal();toast('New quilt started');}}));
+    bar.appendChild(el('button',{class:'btn sm',text:'Download backup file',onclick:backup}));
+    var imp=el('button',{class:'btn sm',text:'Restore from backup',onclick:function(){$('#restore').click();}});
+    bar.appendChild(imp);
+    b.appendChild(bar);
+    if(!projects.length){b.appendChild(el('div',{class:'empty',text:'No saved quilts yet. Press Save in the top bar.'}));return;}
+    var t=el('table');
+    t.innerHTML='<tr><th>Quilt</th><th>Block</th><th>Size</th><th>Saved</th><th></th></tr>';
+    projects.forEach(function(p){
+      var tr=el('tr');
+      tr.innerHTML='<td><b>'+(p.name||'Untitled')+'</b></td><td>'+blockById(p.block).name+'</td>'+
+        '<td>'+(sizeById(p.size).n)+'</td><td>'+new Date(p.saved).toLocaleDateString()+'</td>';
+      var td=el('td',{style:'text-align:right'});
+      td.appendChild(el('button',{class:'btn sm',text:'Open',onclick:function(){
+        state=JSON.parse(JSON.stringify(p));applyState();afterChange();closeModal();toast('Opened '+(p.name||'quilt'));}}));
+      tr.appendChild(td);t.appendChild(tr);
+    });
+    b.appendChild(t);
+  });
+}
+
+/* ============================================================
+   9. CUTTING LIST + YARDAGE
+   ============================================================ */
+var WOF=42, SEAM=0.5, EXTRA=1.15;
+function cutSpec(cut,u){
+  if(cut.t==='hst')return {w:cut.s*u+0.875,h:cut.s*u+0.875,per:2,how:'square, cut once on the diagonal'};
+  if(cut.t==='qst')return {w:cut.s*u+1.25,h:cut.s*u+1.25,per:4,how:'square, cut twice on the diagonal'};
+  var w=cut.w*u+SEAM,h=cut.h*u+SEAM;
+  return {w:w,h:h,per:1,how:(Math.abs(w-h)<0.01)?'square':'rectangle'};
+}
+function buildCutList(){
+  var L=layout(),block=blockById(state.block),u=L.B/block.grid;
+  var nBlocks=L.cols*L.rows, nPlain=0;
+  if(state.set==='checker'){
+    nPlain=0;for(var r=0;r<L.rows;r++)for(var c=0;c<L.cols;c++)if((r+c)%2===1)nPlain++;
+    nBlocks=L.cols*L.rows-nPlain;
+  }
+  var groups={};
+  function add(slot,spec,qty,note){
+    var key=slot+'|'+spec.w.toFixed(3)+'|'+spec.h.toFixed(3)+'|'+spec.how+'|'+(note||'');
+    if(!groups[key])groups[key]={slot:slot,w:spec.w,h:spec.h,per:spec.per,how:spec.how,note:note||'',qty:0};
+    groups[key].qty+=qty;
+  }
+  block.patches.forEach(function(p){
+    add(p.slot,cutSpec(p.cut,u),nBlocks,'for the block');
+  });
+  if(nPlain>0)add(BG,cutSpec({t:'rect',w:1,h:1},L.B),nPlain,'plain alternate block');
+
+  /* long strips cut across the width of fabric */
+  function wofStrips(slot,width,totalLen,note){
+    if(width<=0||totalLen<=0)return;
+    var n=Math.ceil(totalLen/(WOF-2));
+    var key=slot+'|wof|'+width.toFixed(3)+'|'+note;
+    if(!groups[key])groups[key]={slot:slot,w:width,h:width,per:1,how:'strip',wof:true,note:note,qty:0};
+    groups[key].qty+=n;
+  }
+  /* sashing */
+  if(L.sash>0){
+    var vert=L.rows*(L.cols-1);
+    if(vert>0)add('Sashing',{w:L.sash+SEAM,h:L.B+SEAM,per:1,how:'strip'},vert,'between the blocks');
+    if(L.rows>1)wofStrips('Sashing',L.sash+SEAM,(L.rows-1)*(L.centerW+1),'joined and cut to '+frac(L.centerW)+'in for between the rows');
+  }
+  /* borders */
+  if(L.b1>0)wofStrips('Inner border',L.b1+SEAM,2*(L.centerH+1)+2*(L.centerW+2*L.b1+1),'2 sides at '+frac(L.centerH)+'in, top and bottom at '+frac(L.centerW+2*L.b1)+'in');
+  if(L.b2>0)wofStrips('Outer border',L.b2+SEAM,2*(L.centerH+2*L.b1+1)+2*(L.centerW+2*L.b1+2*L.b2+1),'2 sides at '+frac(L.centerH+2*L.b1)+'in, top and bottom at '+frac(L.centerW+2*L.b1+2*L.b2)+'in');
+
+  /* group by fabric slot */
+  var bySlot={};
+  Object.keys(groups).forEach(function(k){
+    var g=groups[k];
+    if(!bySlot[g.slot])bySlot[g.slot]=[];
+    bySlot[g.slot].push(g);
+  });
+
+  /* yardage per slot */
+  var out=[];
+  Object.keys(bySlot).forEach(function(slot){
+    var rows=bySlot[slot],inches=0;
+    rows.forEach(function(g){
+      if(g.wof){g.units=g.qty;g.strips=g.qty;inches+=g.qty*g.w;return;}
+      var units=Math.ceil(g.qty/g.per);
+      var perStrip=Math.max(1,Math.floor(WOF/Math.min(g.w,WOF)));
+      var strips=Math.ceil(units/perStrip);
+      g.units=units;g.strips=strips;
+      inches+=strips*g.h;
+    });
+    out.push({slot:slot,rows:rows,yards:up8(inches*EXTRA/36)});
+  });
+
+  /* binding + backing */
+  var per=2*(L.W+L.H)+12;
+  var bStrips=Math.ceil(per/(WOF-2));
+  out.push({slot:'Binding',rows:[{how:'strip',w:2.5,h:WOF,qty:bStrips,units:bStrips,strips:bStrips,note:'2 1/2in strips joined end to end, '+frac(per)+'in of binding'}],yards:up8(bStrips*2.5*1.1/36)});
+
+  var bw=L.W+8,bh=L.H+8,opt1=Math.ceil(bw/WOF)*bh,opt2=Math.ceil(bh/WOF)*bw;
+  var bestIn=Math.min(opt1,opt2), widths=(opt1<=opt2)?Math.ceil(bw/WOF):Math.ceil(bh/WOF);
+  out.push({slot:'Backing',rows:[{how:'panel',w:WOF,h:bestIn/widths,qty:widths,units:widths,strips:widths,
+    note:'backing needs '+frac(bw)+' x '+frac(bh)+'in, so '+widths+' width'+(widths>1?'s':'')+' of fabric seamed together'}],
+    yards:up8(bestIn*1.05/36)});
+  return out;
+}
+function drawCutList(){
+  var data=buildCutList(),wrap=$('#cutBody');
+  wrap.innerHTML='';
+  var L=layout();
+  wrap.appendChild(el('p',{class:'hint',style:'margin:0 0 14px',
+    text:($('#qname').value.trim()||'Untitled quilt')+' · '+blockById(state.block).name+' · '+
+      frac(L.B)+'in blocks · '+L.cols+' across by '+L.rows+' down · finished '+frac(L.W)+' x '+frac(L.H)+'in'}));
+  data.forEach(function(sec){
+    var f=fabById(state.fabrics[sec.slot]);
+    var card=el('div',{class:'card',style:'margin-bottom:14px;box-shadow:none'});
+    var hd=el('div',{class:'fabhead'});
+    hd.appendChild(el('div',{class:'sw',style:swatchStyle(f)}));
+    hd.appendChild(el('b',{text:sec.slot+(f?' · '+f.name:'')}));
+    var ydTxt=frac(sec.yards)+' yd';
+    if(f&&f.yards!==undefined&&f.yards!==''&&(+f.yards)<sec.yards)ydTxt+=' (you have '+frac(+f.yards)+' yd)';
+    var yd=el('div',{class:'yd'+((f&&f.yards!==''&&f.yards!==undefined&&(+f.yards)<sec.yards)?' warn':''),text:ydTxt});
+    hd.appendChild(yd);
+    card.appendChild(hd);
+    var t=el('table');
+    t.innerHTML='<tr><th>Cut</th><th>Shape</th><th class="num">Pieces</th><th class="num">Cut this many</th><th>Notes</th></tr>';
+    sec.rows.forEach(function(g){
+      var tr=el('tr');
+      var cutTxt=(g.how==='panel')?frac(g.w)+'in width of fabric':(g.wof?inch(g.w)+' x width of fabric':inch(g.w)+' x '+inch(g.h));
+      tr.innerHTML='<td><b>'+cutTxt+'</b></td><td>'+g.how+'</td><td class="num">'+g.qty+'</td>'+
+        '<td class="num">'+g.units+'</td><td class="hint">'+(g.note||'')+'</td>';
+      t.appendChild(tr);
+    });
+    card.appendChild(t);
+    wrap.appendChild(card);
+  });
+  var total=data.reduce(function(a,b){return a+b.yards;},0);
+  wrap.appendChild(el('p',{class:'hint',text:'Total fabric across everything: about '+frac(up8(total))+' yards. Cutting sizes include 1/4in seam allowances and 15 percent extra.'}));
+}
+
+/* ============================================================
+   10. STASH
+   ============================================================ */
+function drawStash(){
+  var g=$('#stashGrid');g.innerHTML='';
+  $('#stashCount').textContent=stash.length+' fabric'+(stash.length===1?'':'s');
+  if(!stash.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">Nothing here yet. Upload a few fabric photos above.</div>';return;}
+  stash.forEach(function(f){
+    var card=el('div',{class:'fab'});
+    card.appendChild(el('div',{class:'im',style:swatchStyle(f)}));
+    var mt=el('div',{class:'mt'});
+    var nameIn=el('input',{type:'text',value:f.name,style:'border:0;background:transparent;padding:0;font-weight:600;font-size:12.5px'});
+    nameIn.onchange=function(){f.name=nameIn.value||'Fabric';saveStash();afterChange();};
+    mt.appendChild(nameIn);
+    var yardIn=el('input',{type:'number',step:'0.125',min:'0',placeholder:'yards on hand',value:(f.yards!==undefined?f.yards:''),
+      style:'border:0;background:transparent;padding:0;font-size:11px;color:var(--muted)'});
+    yardIn.onchange=function(){f.yards=yardIn.value;saveStash();afterChange();};
+    mt.appendChild(yardIn);
+    card.appendChild(mt);
+    var acts=el('div',{class:'acts'});
+    if(f.type!=='solid'){
+      var sc=el('input',{type:'number',min:'1',max:'24',step:'1',value:f.scale||6,title:'Print size in inches',
+        style:'width:56px;padding:3px 5px;font-size:11px'});
+      sc.onchange=function(){f.scale=Math.max(1,+sc.value||6);saveStash();afterChange();};
+      acts.appendChild(sc);
+      acts.appendChild(el('span',{class:'hint',style:'align-self:center',text:'in print'}));
+    }
+    acts.appendChild(el('div',{style:'flex:1'}));
+    acts.appendChild(el('button',{class:'btn sm',text:'Remove',onclick:function(){
+      if(!confirm('Remove "'+f.name+'" from your stash? This cannot be undone.'))return;
+      stash=stash.filter(function(x){return x.id!==f.id;});
+      Object.keys(state.fabrics).forEach(function(k){if(state.fabrics[k]===f.id)delete state.fabrics[k];});
+      saveStash();afterChange();
+    }}));
+    card.appendChild(acts);
+    g.appendChild(card);
+  });
+}
+function addImage(file){
+  var rd=new FileReader();
+  rd.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      var max=460,w=img.width,h=img.height,s=Math.min(1,max/Math.max(w,h));
+      var cv=document.createElement('canvas');cv.width=Math.round(w*s);cv.height=Math.round(h*s);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      stash.push({id:'f'+Date.now()+Math.floor(Math.random()*999),type:'photo',
+        name:file.name.replace(/\.[^.]+$/,'').slice(0,28)||'Fabric',
+        img:cv.toDataURL('image/jpeg',0.82),scale:6,yards:''});
+      saveStash();afterChange();
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(file);
+}
+function backup(){
+  var blob=new Blob([JSON.stringify({stash:stash,projects:projects,current:state},null,1)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='piecework-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  toast('Backup downloaded');
+}
+
+/* ============================================================
+   11. WIRING
+   ============================================================ */
+function applyState(){
+  $('#qname').value=state.name||'';
+  $('#qsize').value=state.size;$('#cw').value=state.cw;$('#ch').value=state.ch;
+  $('#bsize').value=state.bsize;$('#cols').value=state.cols;$('#rows').value=state.rows;
+  $('#sash').value=state.sash;$('#b1').value=state.b1;$('#b2').value=state.b2;$('#setting').value=state.set;
+  $('#customWrap').style.display=state.size==='custom'?'grid':'none';
+}
+function afterChange(){
+  drawBlockPreview();drawQuilt();drawSlots();drawStash();drawCutList();saveCur();
+}
+function readForm(){
+  state.size=$('#qsize').value;state.cw=+$('#cw').value;state.ch=+$('#ch').value;
+  state.bsize=+$('#bsize').value;state.cols=+$('#cols').value;state.rows=+$('#rows').value;
+  state.sash=+$('#sash').value;state.b1=+$('#b1').value;state.b2=+$('#b2').value;
+  state.set=$('#setting').value;state.name=$('#qname').value;
+  $('#customWrap').style.display=state.size==='custom'?'grid':'none';
+}
+
+function init(){
+  load();
+  var sel=$('#qsize');
+  SIZES.forEach(function(s){sel.appendChild(el('option',{value:s.id,text:s.n+(s.id==='custom'?'':' · '+s.w+' x '+s.h+'in')}));});
+  applyState();
+
+  $$('#tabs button').forEach(function(b){
+    b.onclick=function(){
+      $$('#tabs button').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');
+      $$('.pane').forEach(function(p){p.classList.remove('on');});
+      $('#pane-'+b.dataset.t).classList.add('on');
+      if(b.dataset.t==='cut')drawCutList();
+      if(b.dataset.t==='design')drawQuilt();
+    };
+  });
+  var REFIT={qsize:1,cw:1,ch:1,bsize:1,sash:1,b1:1,b2:1};
+  ['qsize','cw','ch','bsize','cols','rows','sash','b1','b2','setting'].forEach(function(id){
+    $('#'+id).addEventListener('change',function(){
+      readForm();
+      if(REFIT[id]){fitBlocks();readForm();}
+      afterChange();
+    });
+    $('#'+id).addEventListener('input',function(){readForm();drawQuilt();});
+  });
+  $('#qname').addEventListener('input',function(){state.name=$('#qname').value;saveCur();});
+  $('#btnFit').onclick=function(){readForm();fitBlocks();readForm();afterChange();toast('Fitted to '+(sizeById(state.size).n||'your size'));};
+  $('#btnBlocks').onclick=openBlockPicker;
+  $('#btnProjects').onclick=openProjects;
+  $('#btnSave').onclick=saveProject;
+  $('#btnGoStash').onclick=function(){$$('#tabs button')[1].click();};
+  $('#btnPrint').onclick=function(){window.print();};
+  $('#btnStarters').onclick=addStarters;
+  $('#btnNoStarters').onclick=removeStarters;
+
+  var drop=$('#drop'),file=$('#file');
+  drop.onclick=function(){file.click();};
+  file.onchange=function(){Array.prototype.forEach.call(file.files,addImage);file.value='';};
+  ['dragenter','dragover'].forEach(function(e){drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('over');});});
+  ['dragleave','drop'].forEach(function(e){drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.remove('over');});});
+  drop.addEventListener('drop',function(ev){
+    Array.prototype.forEach.call(ev.dataTransfer.files,function(f){if(/^image\//.test(f.type))addImage(f);});
+  });
+  $('#btnSolid').onclick=function(){
+    stash.push({id:'f'+Date.now(),type:'solid',name:'Solid '+$('#solidColor').value.toUpperCase(),color:$('#solidColor').value,yards:''});
+    saveStash();afterChange();toast('Solid added');
+  };
+
+  var rest=el('input',{type:'file',id:'restore',accept:'application/json',style:'display:none'});
+  document.body.appendChild(rest);
+  rest.onchange=function(){
+    var f=rest.files[0];if(!f)return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var d=JSON.parse(r.result);
+        if(!confirm('Restore this backup? It will replace your current stash and saved quilts.'))return;
+        stash=d.stash||[];projects=d.projects||[];state=d.current||newState();
+        saveStash();localStorage.setItem(K.projects,JSON.stringify(projects));
+        applyState();afterChange();closeModal();toast('Backup restored');
+      }catch(e){toast('That file could not be read.');}
+    };
+    r.readAsText(f);
+  };
+  window.addEventListener('resize',function(){clearTimeout(window._rz);window._rz=setTimeout(drawQuilt,160);});
+  afterChange();
+}
+init();
+})();
+
+</script>
+</body>
+</html>

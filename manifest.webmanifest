@@ -1,0 +1,16 @@
+{
+  "name": "Piecework Quilt Planner",
+  "short_name": "Piecework",
+  "description": "Plan a quilt from traditional blocks, your own fabric stash and a cutting list that works itself out.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FBF8F3",
+  "theme_color": "#7C8B6F",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
